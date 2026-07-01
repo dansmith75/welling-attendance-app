@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Welling United Red Attendance</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div>
+      <p class="eyebrow">Welling United Red OBDSFL</p>
+      <h1>Attendance</h1>
+    </div>
+  </header>
+
+  <main class="app-shell">
+    <section class="card session-card" aria-labelledby="session-title">
+      <h2 id="session-title">Session details</h2>
+
+      <label for="session-date">Date</label>
+      <input type="date" id="session-date" />
+
+      <label for="session-type">Session type</label>
+      <select id="session-type">
+        <option value="Training">Training</option>
+        <option value="Match">Match</option>
+        <option value="Friendly">Friendly</option>
+        <option value="Trial">Trial</option>
+      </select>
+
+      <label for="session-notes">Notes</label>
+      <textarea id="session-notes" rows="3" placeholder="Optional notes, opposition, venue, weather, etc."></textarea>
+    </section>
+
+    <section class="summary-bar" aria-live="polite">
+      <span id="summary-total">0 players</span>
+      <span id="summary-present">0 present</span>
+      <span id="summary-missing">0 missing</span>
+    </section>
+
+    <section class="player-list" id="player-list" aria-label="Player attendance list">
+      <!-- Player cards are created by app.js -->
+    </section>
+
+    <section class="actions">
+      <button id="export-json" class="primary-button">Export JSON</button>
+      <button id="clear-session" class="danger-button">Clear this session</button>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

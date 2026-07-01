@@ -1,0 +1,30 @@
+[
+  {
+    "id": "player-001",
+    "displayName": "Player 1",
+    "firstName": "Player",
+    "lastName": "1",
+    "active": true
+  },
+  {
+    "id": "player-002",
+    "displayName": "Player 2",
+    "firstName": "Player",
+    "lastName": "2",
+    "active": true
+  },
+  {
+    "id": "player-003",
+    "displayName": "Player 3",
+    "firstName": "Player",
+    "lastName": "3",
+    "active": true
+  },
+  {
+    "id": "player-004",
+    "displayName": "Player 4",
+    "firstName": "Player",
+    "lastName": "4",
+    "active": true
+  }
+]
