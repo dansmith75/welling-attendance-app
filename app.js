@@ -280,8 +280,7 @@ function hideUnpaidWarning() {
   unpaidWarningElement.classList.add("hidden");
 }
 
-function downloadExportJson() {
-  const data = buildExportData();
+function downloadExportJson(data = buildExportData()) {
   const json = JSON.stringify(data, null, 2);
   const blob = new Blob([json], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -297,15 +296,101 @@ function downloadExportJson() {
   URL.revokeObjectURL(url);
 }
 
-function exportJson() {
+function getSupabaseConfig() {
+  return window.WELLING_SUPABASE_CONFIG || { url: "", anonKey: "" };
+}
+
+function isSupabaseConfigured() {
+  const config = getSupabaseConfig();
+  return Boolean(config.url && config.anonKey && window.supabase);
+}
+
+function getSupabaseClient() {
+  const config = getSupabaseConfig();
+  return window.supabase.createClient(config.url, config.anonKey);
+}
+
+function buildSessionRow(data) {
+  return {
+    team: data.team,
+    season: data.season,
+    session_date: data.session.date,
+    session_type: data.session.type,
+    venue: data.session.venue,
+    payload: data
+  };
+}
+
+function buildRecordRows(sessionId, data) {
+  return data.attendance.map((record) => ({
+    session_id: sessionId,
+    player_id: record.playerId,
+    display_name: record.displayName,
+    status: record.status,
+    fee_paid: typeof record.feePaid === "boolean" ? record.feePaid : null,
+    payment_status: record.paymentStatus || null,
+    late_payment: Boolean(record.latePayment)
+  }));
+}
+
+function setSubmitButtonBusy(isBusy) {
+  exportButton.disabled = isBusy;
+  exportButton.textContent = isBusy ? "Submitting..." : "Submit";
+}
+
+async function submitToSupabase(data) {
+  const supabaseClient = getSupabaseClient();
+
+  const { data: insertedSession, error: sessionError } = await supabaseClient
+    .from("attendance_sessions")
+    .insert(buildSessionRow(data))
+    .select("id")
+    .single();
+
+  if (sessionError) {
+    throw sessionError;
+  }
+
+  const recordRows = buildRecordRows(insertedSession.id, data);
+
+  const { error: recordsError } = await supabaseClient
+    .from("attendance_records")
+    .insert(recordRows);
+
+  if (recordsError) {
+    throw recordsError;
+  }
+
+  return insertedSession.id;
+}
+
+async function submitAttendance({ force = false } = {}) {
   const unpaidPlayers = getUnpaidHomeMatchPlayers();
 
-  if (unpaidPlayers.length > 0) {
+  if (!force && unpaidPlayers.length > 0) {
     showUnpaidWarning(unpaidPlayers);
     return;
   }
 
-  downloadExportJson();
+  const data = buildExportData();
+
+  if (!isSupabaseConfigured()) {
+    downloadExportJson(data);
+    window.alert("Supabase is not configured yet, so a JSON file has been downloaded instead.");
+    return;
+  }
+
+  try {
+    setSubmitButtonBusy(true);
+    await submitToSupabase(data);
+    window.alert("Attendance submitted to Supabase.");
+  } catch (error) {
+    console.error(error);
+    window.alert("Supabase submit failed. A JSON backup will download now.");
+    downloadExportJson(data);
+  } finally {
+    setSubmitButtonBusy(false);
+  }
 }
 
 function clearSession() {
@@ -354,10 +439,10 @@ async function init() {
     });
   });
 
-  exportButton.addEventListener("click", exportJson);
+  exportButton.addEventListener("click", () => submitAttendance());
   continueSubmitButton.addEventListener("click", () => {
     hideUnpaidWarning();
-    downloadExportJson();
+    submitAttendance({ force: true });
   });
   cancelSubmitButton.addEventListener("click", hideUnpaidWarning);
   clearButton.addEventListener("click", clearSession);
