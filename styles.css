@@ -266,6 +266,12 @@ h2 {
   cursor: pointer;
 }
 
+.primary-button:disabled,
+.danger-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
 .primary-button {
   background: var(--success);
   color: white;
@@ -344,4 +350,56 @@ h2 {
 .warning-actions {
   display: grid;
   gap: 10px;
+}
+
+
+.success-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.success-overlay.hidden {
+  display: none;
+}
+
+.success-card {
+  width: min(100%, 420px);
+  background: white;
+  border-radius: 18px;
+  padding: 22px;
+  text-align: center;
+  box-shadow: var(--shadow);
+}
+
+.success-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 12px;
+  border-radius: 50%;
+  background: var(--success);
+  color: white;
+  font-size: 2rem;
+  font-weight: 900;
+}
+
+.success-card h2 {
+  margin-bottom: 8px;
+  color: var(--success);
+  font-size: 1.6rem;
+}
+
+.success-card p {
+  margin: 0 0 18px;
+  color: var(--text);
+  font-weight: 700;
+  line-height: 1.4;
 }

@@ -76,6 +76,15 @@
     </div>
   </section>
 
+  <section id="success-message" class="success-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="success-message-title">
+    <div class="success-card">
+      <div class="success-icon" aria-hidden="true">✓</div>
+      <h2 id="success-message-title">Submitted</h2>
+      <p id="success-message-text">Attendance saved to Supabase.</p>
+      <button id="success-ok" class="primary-button" type="button">OK</button>
+    </div>
+  </section>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
   <script src="app.js"></script>

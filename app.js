@@ -15,10 +15,14 @@ const unpaidWarningElement = document.getElementById("unpaid-warning");
 const unpaidPlayerListElement = document.getElementById("unpaid-player-list");
 const continueSubmitButton = document.getElementById("continue-submit");
 const cancelSubmitButton = document.getElementById("cancel-submit");
+const successMessageElement = document.getElementById("success-message");
+const successMessageTextElement = document.getElementById("success-message-text");
+const successOkButton = document.getElementById("success-ok");
 
 let players = [];
 let attendance = {};
 let feesPaid = {};
+let isSubmitting = false;
 
 function todayAsLocalDate() {
   const today = new Date();
@@ -280,6 +284,29 @@ function hideUnpaidWarning() {
   unpaidWarningElement.classList.add("hidden");
 }
 
+function showSuccessMessage(sessionId) {
+  successMessageTextElement.textContent = `Attendance saved to Supabase. Session ${sessionId.slice(0, 8)} has been created and this screen has been cleared.`;
+  successMessageElement.classList.remove("hidden");
+}
+
+function hideSuccessMessage() {
+  successMessageElement.classList.add("hidden");
+}
+
+function hasMarkedPlayers() {
+  return players
+    .filter((player) => player.active)
+    .some((player) => Boolean(getPlayerStatusForCurrentSession(player.id)));
+}
+
+function resetCurrentSessionMarks() {
+  attendance = {};
+  feesPaid = {};
+  saveSession();
+  renderPlayers();
+  updateSummary();
+}
+
 function downloadExportJson(data = buildExportData()) {
   const json = JSON.stringify(data, null, 2);
   const blob = new Blob([json], { type: "application/json" });
@@ -335,6 +362,7 @@ function buildRecordRows(sessionId, data) {
 
 function setSubmitButtonBusy(isBusy) {
   exportButton.disabled = isBusy;
+  clearButton.disabled = isBusy;
   exportButton.textContent = isBusy ? "Submitting..." : "Submit";
 }
 
@@ -365,6 +393,15 @@ async function submitToSupabase(data) {
 }
 
 async function submitAttendance({ force = false } = {}) {
+  if (isSubmitting) {
+    return;
+  }
+
+  if (!hasMarkedPlayers()) {
+    window.alert("No players have been marked yet.");
+    return;
+  }
+
   const unpaidPlayers = getUnpaidHomeMatchPlayers();
 
   if (!force && unpaidPlayers.length > 0) {
@@ -381,14 +418,17 @@ async function submitAttendance({ force = false } = {}) {
   }
 
   try {
+    isSubmitting = true;
     setSubmitButtonBusy(true);
-    await submitToSupabase(data);
-    window.alert("Attendance submitted to Supabase.");
+    const sessionId = await submitToSupabase(data);
+    resetCurrentSessionMarks();
+    showSuccessMessage(sessionId);
   } catch (error) {
     console.error(error);
     window.alert("Supabase submit failed. A JSON backup will download now.");
     downloadExportJson(data);
   } finally {
+    isSubmitting = false;
     setSubmitButtonBusy(false);
   }
 }
@@ -445,6 +485,7 @@ async function init() {
     submitAttendance({ force: true });
   });
   cancelSubmitButton.addEventListener("click", hideUnpaidWarning);
+  successOkButton.addEventListener("click", hideSuccessMessage);
   clearButton.addEventListener("click", clearSession);
 }
 
