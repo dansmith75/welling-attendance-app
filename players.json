@@ -2,131 +2,359 @@
   {
     "id": "alf-m",
     "displayName": "Alf M",
-    "active": true
+    "firstName": "Alf",
+    "lastName": "Morris",
+    "status": "Maybe",
+    "active": true,
+    "trialist": false,
+    "positions": [
+      "CAM",
+      "ST"
+    ],
+    "kitSize": "L",
+    "shirtNumber": 9
   },
   {
     "id": "alfie-f",
     "displayName": "Alfie F",
-    "active": true
+    "firstName": "Alfie",
+    "lastName": "Ferrari",
+    "status": "Active",
+    "active": true,
+    "trialist": false,
+    "positions": [
+      "CAM ST"
+    ],
+    "kitSize": "XL",
+    "shirtNumber": 20
   },
   {
     "id": "bailey-s",
     "displayName": "Bailey",
-    "active": true
+    "firstName": "Bailey",
+    "lastName": "Smith",
+    "status": "Active",
+    "active": true,
+    "trialist": false,
+    "positions": [
+      "RB",
+      "RW"
+    ],
+    "kitSize": "M",
+    "shirtNumber": 2
   },
   {
     "id": "brad-e",
     "displayName": "Brad",
-    "active": true
+    "firstName": "Brad",
+    "lastName": "Eccott",
+    "status": "Maybe",
+    "active": true,
+    "trialist": false,
+    "positions": [
+      "CB",
+      "RB",
+      "LB"
+    ],
+    "kitSize": "L",
+    "shirtNumber": 5
   },
   {
     "id": "callum-c",
     "displayName": "Callum",
-    "active": true
+    "firstName": "Callum",
+    "lastName": "Cripps",
+    "status": "Maybe",
+    "active": true,
+    "trialist": false,
+    "positions": [
+      "LB",
+      "LW",
+      "CM"
+    ],
+    "kitSize": "M",
+    "shirtNumber": 76
   },
   {
     "id": "danny-g",
     "displayName": "Danny",
-    "active": false
+    "firstName": "Danny",
+    "lastName": "Grace",
+    "status": "Left",
+    "active": false,
+    "trialist": false,
+    "positions": [
+      "RB",
+      "RW"
+    ],
+    "kitSize": "L",
+    "shirtNumber": 47
   },
   {
     "id": "ethan-o",
     "displayName": "Ethan",
-    "active": true
+    "firstName": "Ethan",
+    "lastName": "Obialor",
+    "status": "Trialist",
+    "active": true,
+    "trialist": true
   },
   {
     "id": "freddie-f",
     "displayName": "Freddie",
-    "active": true
+    "firstName": "Freddie",
+    "lastName": "Farrell",
+    "status": "Active",
+    "active": true,
+    "trialist": false
   },
   {
     "id": "george-h",
     "displayName": "George",
-    "active": true
+    "firstName": "George",
+    "lastName": "Hickson",
+    "status": "Active",
+    "active": true,
+    "trialist": false,
+    "positions": [
+      "CDM",
+      "CM"
+    ],
+    "kitSize": "XXL",
+    "shirtNumber": 77
   },
   {
     "id": "jamie-s",
     "displayName": "Jamie",
-    "active": true
+    "firstName": "Jamie",
+    "lastName": "Selby",
+    "status": "Maybe",
+    "active": true,
+    "trialist": false,
+    "positions": [
+      "ST"
+    ],
+    "kitSize": "L",
+    "shirtNumber": 7
   },
   {
     "id": "jay-p",
     "displayName": "Jay",
-    "active": true
+    "firstName": "Jay",
+    "lastName": "Penniall",
+    "status": "Active",
+    "active": true,
+    "trialist": false,
+    "positions": [
+      "RB",
+      "RW",
+      "LW"
+    ],
+    "kitSize": "S",
+    "shirtNumber": 17
   },
   {
     "id": "joe-g",
     "displayName": "Joe",
-    "active": true
+    "firstName": "Joe",
+    "lastName": "Gallagher",
+    "status": "Active",
+    "active": true,
+    "trialist": false,
+    "positions": [
+      "CM",
+      "CAM"
+    ],
+    "kitSize": "M",
+    "shirtNumber": 8
   },
   {
     "id": "josh-m",
     "displayName": "Josh",
-    "active": true
+    "firstName": "Josh",
+    "lastName": "Miah",
+    "status": "Active",
+    "active": true,
+    "trialist": false,
+    "positions": [
+      "CB",
+      "LB"
+    ],
+    "kitSize": "L",
+    "shirtNumber": 24
   },
   {
     "id": "jude-g",
     "displayName": "Jude",
-    "active": true
+    "firstName": "Jude",
+    "lastName": "Ginno",
+    "status": "Maybe",
+    "active": true,
+    "trialist": false,
+    "positions": [
+      "LW",
+      "RW",
+      "CM"
+    ],
+    "kitSize": "S",
+    "shirtNumber": 10
   },
   {
     "id": "kalan-w",
     "displayName": "Kalan",
-    "active": true
+    "firstName": "Kalan",
+    "lastName": "Wheatley",
+    "status": "Maybe",
+    "active": true,
+    "trialist": false,
+    "positions": [
+      "CAM",
+      "ST"
+    ],
+    "kitSize": "M",
+    "shirtNumber": 15
   },
   {
     "id": "kazeem-k",
     "displayName": "Kazeem",
-    "active": true
+    "firstName": "Kazeem",
+    "lastName": "Kadir",
+    "status": "Trialist",
+    "active": true,
+    "trialist": true
   },
   {
     "id": "keiran-d",
     "displayName": "Keiran D",
-    "active": true
+    "firstName": "Keiran",
+    "lastName": "Donovan",
+    "status": "Maybe",
+    "active": true,
+    "trialist": false,
+    "positions": [
+      "CDM"
+    ],
+    "kitSize": "XXL",
+    "shirtNumber": 6
   },
   {
     "id": "keiran-r",
     "displayName": "Keiran R",
-    "active": true
+    "firstName": "Keiran",
+    "lastName": "Rawlins",
+    "status": "Active",
+    "active": true,
+    "trialist": false,
+    "positions": [
+      "LW",
+      "CAM"
+    ],
+    "kitSize": "M",
+    "shirtNumber": 21
   },
   {
     "id": "liam-s",
     "displayName": "Liam",
-    "active": true
+    "firstName": "Liam",
+    "lastName": "Shelbourne",
+    "status": "Active",
+    "active": true,
+    "trialist": false,
+    "positions": [
+      "CM"
+    ],
+    "kitSize": "XL"
   },
   {
     "id": "louie-j",
     "displayName": "Louie",
-    "active": true
+    "firstName": "Louie",
+    "lastName": "Jones",
+    "status": "Active",
+    "active": true,
+    "trialist": false,
+    "positions": [
+      "RB",
+      "RW"
+    ],
+    "kitSize": "S",
+    "shirtNumber": 11
   },
   {
     "id": "rocco-b",
     "displayName": "Rocco",
-    "active": true
+    "firstName": "Rocco",
+    "lastName": "Batman",
+    "status": "Trialist",
+    "active": true,
+    "trialist": true
   },
   {
     "id": "ronnie-d",
     "displayName": "Ronnie D",
-    "active": true
+    "firstName": "Ronnie",
+    "lastName": "Davies",
+    "status": "Active",
+    "active": true,
+    "trialist": false,
+    "positions": [
+      "GK"
+    ],
+    "kitSize": "M",
+    "shirtNumber": 99
   },
   {
     "id": "ronnie-t",
     "displayName": "Ronnie T",
-    "active": true
+    "firstName": "Ronnie",
+    "lastName": "Tucker",
+    "status": "Active",
+    "active": true,
+    "trialist": false,
+    "positions": [
+      "CB"
+    ],
+    "kitSize": "M",
+    "shirtNumber": 18
   },
   {
     "id": "ryan-b",
     "displayName": "Ryan",
-    "active": true
+    "firstName": "Ryan",
+    "lastName": "Baillie",
+    "status": "Active",
+    "active": true,
+    "trialist": false
   },
   {
     "id": "ryeley-d",
     "displayName": "Ryeley",
-    "active": true
+    "firstName": "Ryeley",
+    "lastName": "Doolan",
+    "status": "Maybe",
+    "active": true,
+    "trialist": false,
+    "positions": [
+      "CB",
+      "RB"
+    ],
+    "kitSize": "L",
+    "shirtNumber": 4
   },
   {
     "id": "will-b",
     "displayName": "Will",
-    "active": true
+    "firstName": "Will",
+    "lastName": "Beecham",
+    "status": "Active",
+    "active": true,
+    "trialist": false,
+    "positions": [
+      "LB",
+      "LW",
+      "CAM"
+    ],
+    "kitSize": "M",
+    "shirtNumber": 3
   }
 ]

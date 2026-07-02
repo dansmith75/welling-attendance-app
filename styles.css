@@ -8,7 +8,16 @@
   --primary-dark: #990b22;
   --success: #15803d;
   --success-dark: #166534;
-  --danger: #444444;
+  --amber: #d97706;
+  --amber-dark: #b45309;
+  --grey: #6b7280;
+  --grey-dark: #4b5563;
+  --blue: #2563eb;
+  --blue-dark: #1d4ed8;
+  --purple: #7c3aed;
+  --purple-dark: #6d28d9;
+  --danger: #dc2626;
+  --danger-dark: #b91c1c;
   --shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
 }
 
@@ -170,18 +179,24 @@ h2 {
 
 .status-buttons {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
+  grid-template-columns: repeat(var(--button-count, 4), minmax(0, 1fr));
+  gap: 2px;
 }
 
 .status-button,
 .fee-paid-button {
+  min-width: 0;
   border: 1px solid var(--border);
   border-radius: 999px;
-  padding: 10px 8px;
+  padding: 8px 1px;
   background: white;
   color: var(--text);
-  font-weight: 700;
+  font-size: 0.6rem;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   cursor: pointer;
 }
 
@@ -191,9 +206,32 @@ h2 {
   border-color: var(--primary);
 }
 
+.status-present.selected {
+  background: var(--success);
+  border-color: var(--success);
+}
+
+.status-late.selected {
+  background: var(--amber);
+  border-color: var(--amber);
+}
+
+.status-unavailable.selected {
+  background: var(--grey);
+  border-color: var(--grey);
+}
+
+.status-injured.selected {
+  background: var(--blue);
+  border-color: var(--blue);
+}
+
+.status-rotated.selected {
+  background: var(--purple);
+  border-color: var(--purple);
+}
+
 .fee-paid-button {
-  width: 100%;
-  margin-top: 10px;
   border-color: var(--success);
   color: var(--success);
 }
@@ -229,12 +267,12 @@ h2 {
 }
 
 .primary-button {
-  background: var(--primary);
+  background: var(--success);
   color: white;
 }
 
 .primary-button:hover {
-  background: var(--primary-dark);
+  background: var(--success-dark);
 }
 
 .danger-button {
@@ -244,10 +282,66 @@ h2 {
 
 @media (min-width: 620px) {
   .status-buttons {
-    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+  }
+
+  .status-button,
+  .fee-paid-button {
+    padding: 10px 8px;
+    font-size: 0.85rem;
   }
 
   .actions {
     grid-template-columns: 1fr 1fr;
   }
+}
+
+.warning-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.warning-overlay.hidden {
+  display: none;
+}
+
+.warning-card {
+  width: min(100%, 420px);
+  background: white;
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+
+.warning-card h2 {
+  margin-bottom: 10px;
+  color: var(--danger);
+  font-size: 1.6rem;
+}
+
+.warning-card p {
+  margin: 0 0 12px;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.unpaid-player-list {
+  margin: 0 0 18px;
+  padding-left: 22px;
+  font-weight: 800;
+}
+
+.unpaid-player-list li + li {
+  margin-top: 6px;
+}
+
+.warning-actions {
+  display: grid;
+  gap: 10px;
 }

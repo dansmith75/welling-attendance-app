@@ -64,6 +64,18 @@
     </section>
   </main>
 
+  <section id="unpaid-warning" class="warning-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="unpaid-warning-title">
+    <div class="warning-card">
+      <h2 id="unpaid-warning-title">NOT PAID</h2>
+      <p>These players are marked Present or Late but have not been marked Paid:</p>
+      <ul id="unpaid-player-list" class="unpaid-player-list"></ul>
+      <div class="warning-actions">
+        <button id="continue-submit" class="primary-button" type="button">Override and Submit</button>
+        <button id="cancel-submit" class="danger-button" type="button">Go Back</button>
+      </div>
+    </div>
+  </section>
+
   <script src="app.js"></script>
 </body>
 </html>

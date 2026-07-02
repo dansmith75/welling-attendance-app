@@ -1,5 +1,5 @@
 const TRAINING_STATUSES = ["Present", "Late", "Absent", "Injured"];
-const MATCH_STATUSES = ["Present", "Late", "No Show", "Injured", "Rotated"];
+const MATCH_STATUSES = ["Present", "Late", "No Show", "Unavailable", "Injured", "Rotated"];
 const STORAGE_KEY = "welling-red-attendance-v1";
 
 const playerListElement = document.getElementById("player-list");
@@ -11,6 +11,10 @@ const clearButton = document.getElementById("clear-session");
 const summaryTotalElement = document.getElementById("summary-total");
 const summaryPresentElement = document.getElementById("summary-present");
 const summaryMissingElement = document.getElementById("summary-missing");
+const unpaidWarningElement = document.getElementById("unpaid-warning");
+const unpaidPlayerListElement = document.getElementById("unpaid-player-list");
+const continueSubmitButton = document.getElementById("continue-submit");
+const cancelSubmitButton = document.getElementById("cancel-submit");
 
 let players = [];
 let attendance = {};
@@ -154,9 +158,16 @@ function renderPlayers() {
       const buttonGrid = document.createElement("div");
       buttonGrid.className = "status-buttons";
 
-      getVisibleStatuses().forEach((status) => {
+      const visibleStatuses = getVisibleStatuses();
+      const showFeePaid = shouldShowFeePaidButton(player.id);
+      const buttonCount = visibleStatuses.length + (showFeePaid ? 1 : 0);
+      buttonGrid.style.setProperty("--button-count", buttonCount);
+      buttonGrid.classList.add(`button-count-${buttonCount}`);
+
+      visibleStatuses.forEach((status) => {
         const button = document.createElement("button");
         button.className = "status-button";
+        button.classList.add(`status-${status.toLowerCase().replace(/\s+/g, "-")}`);
         button.type = "button";
         button.textContent = status;
 
@@ -168,23 +179,23 @@ function renderPlayers() {
         buttonGrid.appendChild(button);
       });
 
-      card.appendChild(name);
-      card.appendChild(buttonGrid);
-
-      if (shouldShowFeePaidButton(player.id)) {
+      if (showFeePaid) {
         const feeButton = document.createElement("button");
         feeButton.className = "fee-paid-button";
         feeButton.type = "button";
-        feeButton.textContent = feesPaid[player.id] ? "Fee Paid ✓" : "Fee Paid";
+        feeButton.textContent = feesPaid[player.id] ? "Paid ✓" : "Paid";
+        feeButton.title = feesPaid[player.id] ? "Fee Paid" : "Fee Not Paid";
 
         if (feesPaid[player.id]) {
           feeButton.classList.add("selected");
         }
 
         feeButton.addEventListener("click", () => toggleFeePaid(player.id));
-        card.appendChild(feeButton);
+        buttonGrid.appendChild(feeButton);
       }
 
+      card.appendChild(name);
+      card.appendChild(buttonGrid);
       playerListElement.appendChild(card);
     });
 }
@@ -240,7 +251,36 @@ function buildExportData() {
   };
 }
 
-function exportJson() {
+function getUnpaidHomeMatchPlayers() {
+  if (!isHomeMatch()) {
+    return [];
+  }
+
+  return players
+    .filter((player) => player.active)
+    .filter((player) => {
+      const status = getPlayerStatusForCurrentSession(player.id);
+      return shouldTrackFeeForStatus(status) && !feesPaid[player.id];
+    });
+}
+
+function showUnpaidWarning(unpaidPlayers) {
+  unpaidPlayerListElement.innerHTML = "";
+
+  unpaidPlayers.forEach((player) => {
+    const listItem = document.createElement("li");
+    listItem.textContent = player.displayName;
+    unpaidPlayerListElement.appendChild(listItem);
+  });
+
+  unpaidWarningElement.classList.remove("hidden");
+}
+
+function hideUnpaidWarning() {
+  unpaidWarningElement.classList.add("hidden");
+}
+
+function downloadExportJson() {
   const data = buildExportData();
   const json = JSON.stringify(data, null, 2);
   const blob = new Blob([json], { type: "application/json" });
@@ -255,6 +295,17 @@ function exportJson() {
   link.click();
 
   URL.revokeObjectURL(url);
+}
+
+function exportJson() {
+  const unpaidPlayers = getUnpaidHomeMatchPlayers();
+
+  if (unpaidPlayers.length > 0) {
+    showUnpaidWarning(unpaidPlayers);
+    return;
+  }
+
+  downloadExportJson();
 }
 
 function clearSession() {
@@ -304,6 +355,11 @@ async function init() {
   });
 
   exportButton.addEventListener("click", exportJson);
+  continueSubmitButton.addEventListener("click", () => {
+    hideUnpaidWarning();
+    downloadExportJson();
+  });
+  cancelSubmitButton.addEventListener("click", hideUnpaidWarning);
   clearButton.addEventListener("click", clearSession);
 }
 
