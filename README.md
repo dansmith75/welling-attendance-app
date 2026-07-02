@@ -17,3 +17,5 @@ Simple mobile-first attendance app for Welling United Red OBDSFL.
 4. Test from GitHub Pages.
 
 Never put the Supabase `service_role` key into this browser app.
+
+Deployment retry 2026-07-02 16:27
