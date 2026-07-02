@@ -18,6 +18,12 @@ const cancelSubmitButton = document.getElementById("cancel-submit");
 const successMessageElement = document.getElementById("success-message");
 const successMessageTextElement = document.getElementById("success-message-text");
 const successOkButton = document.getElementById("success-ok");
+const viewSessionsButton = document.getElementById("view-sessions");
+const sessionsViewElement = document.getElementById("sessions-view");
+const closeSessionsButton = document.getElementById("close-sessions");
+const sessionsStatusElement = document.getElementById("sessions-status");
+const sessionsListElement = document.getElementById("sessions-list");
+const sessionDetailsElement = document.getElementById("session-details");
 
 let players = [];
 let attendance = {};
@@ -433,6 +439,162 @@ async function submitAttendance({ force = false } = {}) {
   }
 }
 
+
+function formatSessionTitle(session) {
+  const venue = session.venue ? ` - ${session.venue}` : "";
+  return `${session.session_date} - ${session.session_type}${venue}`;
+}
+
+function countSessionStatuses(records) {
+  return records.reduce((counts, record) => {
+    counts[record.status] = (counts[record.status] || 0) + 1;
+    return counts;
+  }, {});
+}
+
+function renderStatusCounts(records) {
+  const counts = countSessionStatuses(records);
+  const entries = Object.entries(counts);
+
+  if (entries.length === 0) {
+    return "No records";
+  }
+
+  return entries
+    .map(([status, count]) => `${status}: ${count}`)
+    .join(" · ");
+}
+
+function showSessionsView() {
+  sessionsViewElement.classList.remove("hidden");
+  loadRecentSessions();
+}
+
+function hideSessionsView() {
+  sessionsViewElement.classList.add("hidden");
+  sessionsListElement.innerHTML = "";
+  sessionDetailsElement.innerHTML = "";
+}
+
+function setSessionsStatus(message) {
+  sessionsStatusElement.textContent = message;
+}
+
+async function loadRecentSessions() {
+  if (!isSupabaseConfigured()) {
+    sessionsListElement.innerHTML = "";
+    sessionDetailsElement.innerHTML = "";
+    setSessionsStatus("Supabase is not configured, so recent sessions cannot be loaded.");
+    return;
+  }
+
+  setSessionsStatus("Loading recent sessions...");
+  sessionsListElement.innerHTML = "";
+  sessionDetailsElement.innerHTML = "";
+
+  try {
+    const supabaseClient = getSupabaseClient();
+    const { data: sessions, error } = await supabaseClient
+      .from("attendance_sessions")
+      .select("id, session_date, session_type, venue, submitted_at")
+      .order("submitted_at", { ascending: false })
+      .limit(10);
+
+    if (error) {
+      throw error;
+    }
+
+    if (!sessions || sessions.length === 0) {
+      setSessionsStatus("No submitted sessions found yet.");
+      return;
+    }
+
+    setSessionsStatus("Tap a session to view the player records.");
+
+    sessions.forEach((session) => {
+      const button = document.createElement("button");
+      button.className = "session-row";
+      button.type = "button";
+
+      const title = document.createElement("span");
+      title.className = "session-row-title";
+      title.textContent = formatSessionTitle(session);
+
+      const meta = document.createElement("span");
+      meta.className = "session-row-meta";
+      meta.textContent = `Submitted ${new Date(session.submitted_at).toLocaleString()}`;
+
+      button.appendChild(title);
+      button.appendChild(meta);
+      button.addEventListener("click", () => loadSessionDetails(session));
+      sessionsListElement.appendChild(button);
+    });
+  } catch (error) {
+    console.error(error);
+    setSessionsStatus("Could not load recent sessions. Check Supabase settings or table columns.");
+  }
+}
+
+async function loadSessionDetails(session) {
+  sessionDetailsElement.innerHTML = `<p class="sessions-status">Loading ${formatSessionTitle(session)}...</p>`;
+
+  try {
+    const supabaseClient = getSupabaseClient();
+    const { data: records, error } = await supabaseClient
+      .from("attendance_records")
+      .select("player_id, display_name, status, fee_paid, payment_status, late_payment")
+      .eq("session_id", session.id)
+      .order("display_name", { ascending: true });
+
+    if (error) {
+      throw error;
+    }
+
+    const detailTitle = document.createElement("h3");
+    detailTitle.textContent = formatSessionTitle(session);
+
+    const summary = document.createElement("p");
+    summary.className = "detail-summary";
+    summary.textContent = `${records.length} player records · ${renderStatusCounts(records)}`;
+
+    const list = document.createElement("div");
+    list.className = "record-list";
+
+    records.forEach((record) => {
+      const row = document.createElement("div");
+      row.className = "record-row";
+
+      const name = document.createElement("span");
+      name.className = "record-name";
+      name.textContent = record.display_name;
+
+      const status = document.createElement("span");
+      status.className = `record-status record-${record.status.toLowerCase().replace(/\s+/g, "-")}`;
+      status.textContent = record.status;
+
+      row.appendChild(name);
+      row.appendChild(status);
+
+      if (record.payment_status) {
+        const payment = document.createElement("span");
+        payment.className = record.fee_paid ? "record-payment paid" : "record-payment not-paid";
+        payment.textContent = record.fee_paid ? "Paid" : "Not Paid";
+        row.appendChild(payment);
+      }
+
+      list.appendChild(row);
+    });
+
+    sessionDetailsElement.innerHTML = "";
+    sessionDetailsElement.appendChild(detailTitle);
+    sessionDetailsElement.appendChild(summary);
+    sessionDetailsElement.appendChild(list);
+  } catch (error) {
+    console.error(error);
+    sessionDetailsElement.innerHTML = `<p class="sessions-status error">Could not load player records. Check Supabase select policies for attendance_records.</p>`;
+  }
+}
+
 function clearSession() {
   const confirmed = window.confirm("Clear all attendance marks and fee paid marks for this session?");
 
@@ -486,6 +648,8 @@ async function init() {
   });
   cancelSubmitButton.addEventListener("click", hideUnpaidWarning);
   successOkButton.addEventListener("click", hideSuccessMessage);
+  viewSessionsButton.addEventListener("click", showSessionsView);
+  closeSessionsButton.addEventListener("click", hideSessionsView);
   clearButton.addEventListener("click", clearSession);
 }
 
