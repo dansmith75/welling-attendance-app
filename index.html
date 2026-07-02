@@ -8,6 +8,7 @@
 </head>
 <body>
   <header class="app-header">
+    <img class="club-logo" src="Welling-Logo.jpg" alt="Welling United logo" onerror="this.style.display='none'" />
     <div>
       <p class="eyebrow">Welling United Red OBDSFL</p>
       <h1>Attendance</h1>
@@ -16,21 +17,35 @@
 
   <main class="app-shell">
     <section class="card session-card" aria-labelledby="session-title">
-      <h2 id="session-title">Session details</h2>
+      <h2 id="session-title">Session type</h2>
 
-      <label for="session-date">Date</label>
-      <input type="date" id="session-date" />
+      <fieldset class="radio-options">
+        <legend class="sr-only">Session type</legend>
 
-      <label for="session-type">Session type</label>
-      <select id="session-type">
-        <option value="Training">Training</option>
-        <option value="Match">Match</option>
-        <option value="Friendly">Friendly</option>
-        <option value="Trial">Trial</option>
-      </select>
+        <label class="radio-card">
+          <input type="radio" name="session-type" value="Training" checked />
+          <span>Training</span>
+        </label>
 
-      <label for="session-notes">Notes</label>
-      <textarea id="session-notes" rows="3" placeholder="Optional notes, opposition, venue, weather, etc."></textarea>
+        <label class="radio-card">
+          <input type="radio" name="session-type" value="Match" />
+          <span>Match</span>
+        </label>
+      </fieldset>
+
+      <fieldset id="match-venue-options" class="radio-options venue-options hidden">
+        <legend>Match venue</legend>
+
+        <label class="radio-card">
+          <input type="radio" name="match-venue" value="Home" checked />
+          <span>Home</span>
+        </label>
+
+        <label class="radio-card">
+          <input type="radio" name="match-venue" value="Away" />
+          <span>Away</span>
+        </label>
+      </fieldset>
     </section>
 
     <section class="summary-bar" aria-live="polite">
@@ -44,8 +59,8 @@
     </section>
 
     <section class="actions">
-      <button id="export-json" class="primary-button">Export JSON</button>
-      <button id="clear-session" class="danger-button">Clear this session</button>
+      <button id="export-json" class="primary-button">Submit</button>
+      <button id="clear-session" class="danger-button">Clear</button>
     </section>
   </main>
 

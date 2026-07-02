@@ -6,6 +6,8 @@
   --border: #d9dde5;
   --primary: #c8102e;
   --primary-dark: #990b22;
+  --success: #15803d;
+  --success-dark: #166534;
   --danger: #444444;
   --shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
 }
@@ -22,9 +24,22 @@ body {
 }
 
 .app-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
   background: var(--primary);
   color: white;
-  padding: 20px 16px;
+  padding: 18px 16px;
+}
+
+.club-logo {
+  width: 58px;
+  height: 58px;
+  object-fit: contain;
+  flex: 0 0 auto;
+  background: white;
+  border-radius: 50%;
+  padding: 4px;
 }
 
 .eyebrow {
@@ -42,6 +57,18 @@ h2 {
 
 h1 {
   font-size: 1.8rem;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 h2 {
@@ -69,20 +96,51 @@ h2 {
   margin-bottom: 14px;
 }
 
-label {
-  display: block;
-  margin: 12px 0 6px;
-  font-weight: 700;
+.radio-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  border: 0;
 }
 
-input,
-select,
-textarea {
-  width: 100%;
-  padding: 12px;
+.venue-options {
+  margin-top: 16px;
+}
+
+.radio-options legend {
+  grid-column: 1 / -1;
+  margin-bottom: 2px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.radio-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
   border: 1px solid var(--border);
-  border-radius: 10px;
-  font-size: 1rem;
+  border-radius: 999px;
+  background: white;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.radio-card input {
+  position: absolute;
+  opacity: 0;
+}
+
+.radio-card:has(input:checked) {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.hidden {
+  display: none;
 }
 
 .summary-bar {
@@ -116,7 +174,8 @@ textarea {
   gap: 8px;
 }
 
-.status-button {
+.status-button,
+.fee-paid-button {
   border: 1px solid var(--border);
   border-radius: 999px;
   padding: 10px 8px;
@@ -130,6 +189,23 @@ textarea {
   background: var(--primary);
   color: white;
   border-color: var(--primary);
+}
+
+.fee-paid-button {
+  width: 100%;
+  margin-top: 10px;
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.fee-paid-button.selected {
+  background: var(--success);
+  color: white;
+  border-color: var(--success);
+}
+
+.fee-paid-button:hover {
+  border-color: var(--success-dark);
 }
 
 .actions {
@@ -168,7 +244,7 @@ textarea {
 
 @media (min-width: 620px) {
   .status-buttons {
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(5, 1fr);
   }
 
   .actions {

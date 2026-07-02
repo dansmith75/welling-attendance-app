@@ -1,10 +1,11 @@
-const STATUSES = ["Present", "Absent", "Late", "Injured", "Holiday", "Trialist"];
+const TRAINING_STATUSES = ["Present", "Late", "Absent", "Injured"];
+const MATCH_STATUSES = ["Present", "Late", "No Show", "Injured", "Rotated"];
 const STORAGE_KEY = "welling-red-attendance-v1";
 
 const playerListElement = document.getElementById("player-list");
-const sessionDateElement = document.getElementById("session-date");
-const sessionTypeElement = document.getElementById("session-type");
-const sessionNotesElement = document.getElementById("session-notes");
+const sessionTypeElements = document.querySelectorAll('input[name="session-type"]');
+const matchVenueElements = document.querySelectorAll('input[name="match-venue"]');
+const matchVenueOptionsElement = document.getElementById("match-venue-options");
 const exportButton = document.getElementById("export-json");
 const clearButton = document.getElementById("clear-session");
 const summaryTotalElement = document.getElementById("summary-total");
@@ -13,9 +14,50 @@ const summaryMissingElement = document.getElementById("summary-missing");
 
 let players = [];
 let attendance = {};
+let feesPaid = {};
 
-function todayAsInputDate() {
-  return new Date().toISOString().slice(0, 10);
+function todayAsLocalDate() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function getSelectedSessionType() {
+  const checkedSessionType = document.querySelector('input[name="session-type"]:checked');
+  return checkedSessionType ? checkedSessionType.value : "Training";
+}
+
+function getSelectedMatchVenue() {
+  const checkedMatchVenue = document.querySelector('input[name="match-venue"]:checked');
+  return checkedMatchVenue ? checkedMatchVenue.value : "Home";
+}
+
+function isMatch() {
+  return getSelectedSessionType() === "Match";
+}
+
+function isHomeMatch() {
+  return getSelectedSessionType() === "Match" && getSelectedMatchVenue() === "Home";
+}
+
+function setSelectedSessionType(sessionType) {
+  sessionTypeElements.forEach((element) => {
+    element.checked = element.value === sessionType;
+  });
+}
+
+function setSelectedMatchVenue(matchVenue) {
+  matchVenueElements.forEach((element) => {
+    element.checked = element.value === matchVenue;
+  });
+}
+
+function updateMatchVenueVisibility() {
+  const isMatch = getSelectedSessionType() === "Match";
+  matchVenueOptionsElement.classList.toggle("hidden", !isMatch);
 }
 
 function loadSavedSession() {
@@ -23,10 +65,10 @@ function loadSavedSession() {
 
   if (!saved) {
     return {
-      date: todayAsInputDate(),
       type: "Training",
-      notes: "",
-      attendance: {}
+      venue: "Home",
+      attendance: {},
+      feesPaid: {}
     };
   }
 
@@ -35,20 +77,65 @@ function loadSavedSession() {
 
 function saveSession() {
   const session = {
-    date: sessionDateElement.value,
-    type: sessionTypeElement.value,
-    notes: sessionNotesElement.value,
-    attendance
+    type: getSelectedSessionType(),
+    venue: getSelectedMatchVenue(),
+    attendance,
+    feesPaid
   };
 
   localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
 }
 
+function cleanUpFeesPaid() {
+  Object.keys(feesPaid).forEach((playerId) => {
+    if (!shouldShowFeePaidButton(playerId)) {
+      delete feesPaid[playerId];
+    }
+  });
+}
+
 function setPlayerStatus(playerId, status) {
   attendance[playerId] = status;
+
+  if (!shouldTrackFeeForStatus(status)) {
+    delete feesPaid[playerId];
+  }
+
   saveSession();
   renderPlayers();
   updateSummary();
+}
+
+function toggleFeePaid(playerId) {
+  feesPaid[playerId] = !feesPaid[playerId];
+  saveSession();
+  renderPlayers();
+}
+
+function getVisibleStatuses() {
+  return isMatch() ? MATCH_STATUSES : TRAINING_STATUSES;
+}
+
+function getPlayerStatusForCurrentSession(playerId) {
+  const status = attendance[playerId];
+
+  if (isMatch() && status === "Absent") {
+    return "No Show";
+  }
+
+  if (!isMatch() && status === "No Show") {
+    return "Absent";
+  }
+
+  return status;
+}
+
+function shouldTrackFeeForStatus(status) {
+  return status === "Present" || status === "Late";
+}
+
+function shouldShowFeePaidButton(playerId) {
+  return isHomeMatch() && shouldTrackFeeForStatus(getPlayerStatusForCurrentSession(playerId));
 }
 
 function renderPlayers() {
@@ -67,13 +154,13 @@ function renderPlayers() {
       const buttonGrid = document.createElement("div");
       buttonGrid.className = "status-buttons";
 
-      STATUSES.forEach((status) => {
+      getVisibleStatuses().forEach((status) => {
         const button = document.createElement("button");
         button.className = "status-button";
         button.type = "button";
         button.textContent = status;
 
-        if (attendance[player.id] === status) {
+        if (getPlayerStatusForCurrentSession(player.id) === status) {
           button.classList.add("selected");
         }
 
@@ -83,6 +170,21 @@ function renderPlayers() {
 
       card.appendChild(name);
       card.appendChild(buttonGrid);
+
+      if (shouldShowFeePaidButton(player.id)) {
+        const feeButton = document.createElement("button");
+        feeButton.className = "fee-paid-button";
+        feeButton.type = "button";
+        feeButton.textContent = feesPaid[player.id] ? "Fee Paid ✓" : "Fee Paid";
+
+        if (feesPaid[player.id]) {
+          feeButton.classList.add("selected");
+        }
+
+        feeButton.addEventListener("click", () => toggleFeePaid(player.id));
+        card.appendChild(feeButton);
+      }
+
       playerListElement.appendChild(card);
     });
 }
@@ -90,9 +192,9 @@ function renderPlayers() {
 function updateSummary() {
   const activePlayers = players.filter((player) => player.active);
   const presentCount = activePlayers.filter((player) => {
-    return attendance[player.id] === "Present" || attendance[player.id] === "Late";
+    const status = getPlayerStatusForCurrentSession(player.id);
+    return status === "Present" || status === "Late";
   }).length;
-  const markedCount = activePlayers.filter((player) => attendance[player.id]).length;
   const missingCount = activePlayers.length - presentCount;
 
   summaryTotalElement.textContent = `${activePlayers.length} players`;
@@ -101,21 +203,40 @@ function updateSummary() {
 }
 
 function buildExportData() {
+  const exportDate = todayAsLocalDate();
+  const sessionType = getSelectedSessionType();
+  const matchVenue = getSelectedMatchVenue();
+  const includeFeePaid = sessionType === "Match" && matchVenue === "Home";
+
   return {
     team: "Welling United Red OBDSFL",
     season: "2026/27",
     session: {
-      date: sessionDateElement.value,
-      type: sessionTypeElement.value,
-      notes: sessionNotesElement.value
+      date: exportDate,
+      type: sessionType,
+      venue: sessionType === "Match" ? matchVenue : null
     },
     attendance: players
       .filter((player) => player.active)
-      .map((player) => ({
-        playerId: player.id,
-        displayName: player.displayName,
-        status: attendance[player.id] || "Unmarked"
-      }))
+      .map((player) => {
+        const record = {
+          playerId: player.id,
+          displayName: player.displayName,
+          status: getPlayerStatusForCurrentSession(player.id) || "Unmarked"
+        };
+
+        if (includeFeePaid && shouldTrackFeeForStatus(record.status)) {
+          const feePaid = Boolean(feesPaid[player.id]);
+          record.feePaid = feePaid;
+          record.paymentStatus = feePaid ? "Paid" : "Not Paid";
+
+          if (!feePaid) {
+            record.latePayment = true;
+          }
+        }
+
+        return record;
+      })
   };
 }
 
@@ -124,24 +245,27 @@ function exportJson() {
   const json = JSON.stringify(data, null, 2);
   const blob = new Blob([json], { type: "application/json" });
   const url = URL.createObjectURL(blob);
+  const exportDate = data.session.date;
+  const sessionType = data.session.type.toLowerCase();
+  const venue = data.session.venue ? `-${data.session.venue.toLowerCase()}` : "";
 
   const link = document.createElement("a");
   link.href = url;
-  link.download = `attendance-${sessionDateElement.value}.json`;
+  link.download = `attendance-${exportDate}-${sessionType}${venue}.json`;
   link.click();
 
   URL.revokeObjectURL(url);
 }
 
 function clearSession() {
-  const confirmed = window.confirm("Clear all attendance marks for this session?");
+  const confirmed = window.confirm("Clear all attendance marks and fee paid marks for this session?");
 
   if (!confirmed) {
     return;
   }
 
   attendance = {};
-  sessionNotesElement.value = "";
+  feesPaid = {};
   saveSession();
   renderPlayers();
   updateSummary();
@@ -150,10 +274,11 @@ function clearSession() {
 async function init() {
   const savedSession = loadSavedSession();
 
-  sessionDateElement.value = savedSession.date || todayAsInputDate();
-  sessionTypeElement.value = savedSession.type || "Training";
-  sessionNotesElement.value = savedSession.notes || "";
+  setSelectedSessionType(savedSession.type || "Training");
+  setSelectedMatchVenue(savedSession.venue || "Home");
   attendance = savedSession.attendance || {};
+  feesPaid = savedSession.feesPaid || {};
+  updateMatchVenueVisibility();
 
   const response = await fetch("players.json");
   players = await response.json();
@@ -161,9 +286,23 @@ async function init() {
   renderPlayers();
   updateSummary();
 
-  sessionDateElement.addEventListener("change", saveSession);
-  sessionTypeElement.addEventListener("change", saveSession);
-  sessionNotesElement.addEventListener("input", saveSession);
+  sessionTypeElements.forEach((element) => {
+    element.addEventListener("change", () => {
+      updateMatchVenueVisibility();
+      cleanUpFeesPaid();
+      saveSession();
+      renderPlayers();
+    });
+  });
+
+  matchVenueElements.forEach((element) => {
+    element.addEventListener("change", () => {
+      cleanUpFeesPaid();
+      saveSession();
+      renderPlayers();
+    });
+  });
+
   exportButton.addEventListener("click", exportJson);
   clearButton.addEventListener("click", clearSession);
 }
