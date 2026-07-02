@@ -257,7 +257,9 @@ h2 {
 }
 
 .primary-button,
-.danger-button {
+.danger-button,
+.secondary-button,
+.small-button {
   border: 0;
   border-radius: 12px;
   padding: 14px;
@@ -267,7 +269,8 @@ h2 {
 }
 
 .primary-button:disabled,
-.danger-button:disabled {
+.danger-button:disabled,
+.secondary-button:disabled {
   cursor: not-allowed;
   opacity: 0.65;
 }
@@ -286,6 +289,20 @@ h2 {
   color: white;
 }
 
+.secondary-button {
+  background: var(--text);
+  color: white;
+}
+
+.small-button {
+  background: white;
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 9px 12px;
+  font-size: 0.85rem;
+}
+
+
 @media (min-width: 620px) {
   .status-buttons {
     gap: 8px;
@@ -298,7 +315,7 @@ h2 {
   }
 
   .actions {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr;
   }
 }
 
@@ -402,4 +419,150 @@ h2 {
   color: var(--text);
   font-weight: 700;
   line-height: 1.4;
+}
+
+
+.sessions-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.sessions-overlay.hidden {
+  display: none;
+}
+
+.sessions-card {
+  width: min(100%, 760px);
+  max-height: calc(100vh - 24px);
+  overflow: auto;
+  background: white;
+  border-radius: 18px;
+  padding: 16px;
+  box-shadow: var(--shadow);
+}
+
+.sessions-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.eyebrow.dark {
+  color: var(--muted);
+  opacity: 1;
+}
+
+.sessions-status {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.sessions-status.error {
+  color: var(--danger);
+}
+
+.sessions-list {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.session-row {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  background: white;
+  text-align: left;
+  cursor: pointer;
+}
+
+.session-row-title {
+  font-size: 0.98rem;
+  font-weight: 900;
+  color: var(--text);
+}
+
+.session-row-meta {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.session-details {
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+
+.session-details h3 {
+  margin: 0 0 8px;
+  font-size: 1.1rem;
+}
+
+.detail-summary {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.record-list {
+  display: grid;
+  gap: 6px;
+}
+
+.record-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.record-name {
+  font-weight: 900;
+}
+
+.record-status,
+.record-payment {
+  border-radius: 999px;
+  padding: 5px 8px;
+  font-size: 0.72rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.record-status {
+  background: #f3f4f6;
+  color: var(--text);
+}
+
+.record-present { background: #dcfce7; color: var(--success-dark); }
+.record-late { background: #fef3c7; color: var(--amber-dark); }
+.record-unavailable { background: #f3f4f6; color: var(--grey-dark); }
+.record-injured { background: #dbeafe; color: var(--blue-dark); }
+.record-rotated { background: #ede9fe; color: var(--purple-dark); }
+.record-no-show { background: #fee2e2; color: var(--danger-dark); }
+
+.record-payment.paid {
+  background: #dcfce7;
+  color: var(--success-dark);
+}
+
+.record-payment.not-paid {
+  background: #fee2e2;
+  color: var(--danger-dark);
 }

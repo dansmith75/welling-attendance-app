@@ -61,6 +61,7 @@
     <section class="actions">
       <button id="export-json" class="primary-button">Submit</button>
       <button id="clear-session" class="danger-button">Clear</button>
+      <button id="view-sessions" class="secondary-button" type="button">Recent</button>
     </section>
   </main>
 
@@ -82,6 +83,23 @@
       <h2 id="success-message-title">Submitted</h2>
       <p id="success-message-text">Attendance saved to Supabase.</p>
       <button id="success-ok" class="primary-button" type="button">OK</button>
+    </div>
+  </section>
+
+
+  <section id="sessions-view" class="sessions-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="sessions-view-title">
+    <div class="sessions-card">
+      <div class="sessions-header">
+        <div>
+          <p class="eyebrow dark">Supabase</p>
+          <h2 id="sessions-view-title">Recent Sessions</h2>
+        </div>
+        <button id="close-sessions" class="small-button" type="button" aria-label="Close recent sessions">Close</button>
+      </div>
+
+      <div id="sessions-status" class="sessions-status">Loading recent sessions...</div>
+      <div id="sessions-list" class="sessions-list"></div>
+      <div id="session-details" class="session-details"></div>
     </div>
   </section>
 

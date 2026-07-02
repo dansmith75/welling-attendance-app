@@ -1,13 +1,19 @@
-# Welling United Red Attendance App v1.9
+# Welling United Red OBDSFL Attendance App v2
 
-Static mobile-first attendance app for Welling United Red OBDSFL.
+Simple mobile-first attendance app for Welling United Red OBDSFL.
 
-## v1.9 changes
+## v2 adds
 
-- Submit now checks home matches for unpaid Present or Late players.
-- If unpaid players are found, a NOT PAID warning popup lists their names.
-- The popup has an Override and Submit button to continue anyway.
-- Paid button wording remains Paid / Paid ✓.
-- Selected status colours remain: Present green, Late amber, Unavailable grey, Injured blue, Rotated purple.
+- Supabase save on Submit
+- Local browser save while marking attendance
+- JSON download fallback if Supabase is not configured or submit fails
+- Home match unpaid warning before submit
 
-Run locally with VS Code Live Server.
+## Setup
+
+1. Run `supabase-schema.sql` in Supabase SQL Editor.
+2. Copy your Supabase Project URL and anon/publishable key into `supabase-config.js`.
+3. Commit and push the files.
+4. Test from GitHub Pages.
+
+Never put the Supabase `service_role` key into this browser app.

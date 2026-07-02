@@ -67,3 +67,23 @@ create policy "Allow anon insert attendance records"
 --   for select
 --   to anon
 --   using (true);
+
+
+-- v2.2 recent sessions view policies
+-- These allow the app to read recent submitted sessions and player records.
+drop policy if exists "allow_select_attendance_sessions" on public.attendance_sessions;
+drop policy if exists "allow_select_attendance_records" on public.attendance_records;
+
+create policy "allow_select_attendance_sessions"
+on public.attendance_sessions
+as permissive
+for select
+to anon
+using (true);
+
+create policy "allow_select_attendance_records"
+on public.attendance_records
+as permissive
+for select
+to anon
+using (true);
