@@ -7,9 +7,8 @@ const ADMIN_STORAGE_KEY = "welling-red-attendance-admin-unlocked-v1";
 const APP_USERS = [
   { name: "Dan", role: "admin" },
   { name: "John", role: "manager" },
-  { name: "Manager 2", role: "manager" },
-  { name: "Manager 3", role: "manager" },
-  { name: "Manager 4", role: "manager" }
+  { name: "Joe", role: "manager" },
+  { name: "Ryan", role: "manager" }
 ];
 
 const playerListElement = document.getElementById("player-list");
@@ -91,9 +90,19 @@ function renderUserOptions() {
 
   APP_USERS.forEach((user) => {
     const button = document.createElement("button");
-    button.className = user.role === "admin" ? "user-option admin-user" : "user-option";
+    const buttonClasses = ["user-option"];
+
+    if (user.role === "admin") {
+      buttonClasses.push("admin-user");
+    }
+
+    if (currentUser && currentUser.name === user.name) {
+      buttonClasses.push("selected-user");
+    }
+
+    button.className = buttonClasses.join(" ");
     button.type = "button";
-    button.textContent = user.name;
+    button.textContent = currentUser && currentUser.name === user.name ? `${user.name} ✓` : user.name;
     button.addEventListener("click", () => saveSelectedUser(user));
     userOptionsElement.appendChild(button);
   });
@@ -918,10 +927,7 @@ function clearSession() {
 async function init() {
   currentUser = loadSavedUser();
   updateUserUi();
-
-  if (!currentUser) {
-    showUserSelection();
-  }
+  showUserSelection();
 
   const savedSession = loadSavedSession();
 

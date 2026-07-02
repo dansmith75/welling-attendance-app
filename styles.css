@@ -677,6 +677,13 @@ h2 {
   color: var(--primary);
 }
 
+.user-option.selected-user {
+  border-color: var(--primary);
+  background: rgba(191, 10, 48, 0.08);
+  color: var(--primary);
+  box-shadow: inset 0 0 0 1px rgba(191, 10, 48, 0.18);
+}
+
 .admin-tools {
   display: grid;
   grid-template-columns: 1fr auto;
