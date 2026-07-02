@@ -29,6 +29,7 @@ let players = [];
 let attendance = {};
 let feesPaid = {};
 let isSubmitting = false;
+let expandedSessionId = null;
 
 function todayAsLocalDate() {
   const today = new Date();
@@ -474,6 +475,7 @@ function hideSessionsView() {
   sessionsViewElement.classList.add("hidden");
   sessionsListElement.innerHTML = "";
   sessionDetailsElement.innerHTML = "";
+  expandedSessionId = null;
 }
 
 function setSessionsStatus(message) {
@@ -491,6 +493,7 @@ async function loadRecentSessions() {
   setSessionsStatus("Loading recent sessions...");
   sessionsListElement.innerHTML = "";
   sessionDetailsElement.innerHTML = "";
+  expandedSessionId = null;
 
   try {
     const supabaseClient = getSupabaseClient();
@@ -512,9 +515,13 @@ async function loadRecentSessions() {
     setSessionsStatus("Tap a session to view the player records.");
 
     sessions.forEach((session) => {
+      const sessionItem = document.createElement("div");
+      sessionItem.className = "session-item";
+
       const button = document.createElement("button");
       button.className = "session-row";
       button.type = "button";
+      button.setAttribute("aria-expanded", "false");
 
       const title = document.createElement("span");
       title.className = "session-row-title";
@@ -524,10 +531,17 @@ async function loadRecentSessions() {
       meta.className = "session-row-meta";
       meta.textContent = `Submitted ${new Date(session.submitted_at).toLocaleString()}`;
 
+      const details = document.createElement("div");
+      details.className = "session-details inline hidden";
+      details.id = `session-details-${session.id}`;
+
       button.appendChild(title);
       button.appendChild(meta);
-      button.addEventListener("click", () => loadSessionDetails(session));
-      sessionsListElement.appendChild(button);
+      button.addEventListener("click", () => toggleSessionDetails(session, sessionItem, button, details));
+
+      sessionItem.appendChild(button);
+      sessionItem.appendChild(details);
+      sessionsListElement.appendChild(sessionItem);
     });
   } catch (error) {
     console.error(error);
@@ -535,9 +549,47 @@ async function loadRecentSessions() {
   }
 }
 
-async function loadSessionDetails(session) {
-  sessionDetailsElement.innerHTML = `<p class="sessions-status">Loading ${formatSessionTitle(session)}...</p>`;
+function collapseExpandedSession() {
+  if (!expandedSessionId) {
+    return;
+  }
 
+  const openDetails = document.getElementById(`session-details-${expandedSessionId}`);
+  const openButton = document.querySelector(`[data-session-id="${expandedSessionId}"]`);
+
+  if (openDetails) {
+    openDetails.classList.add("hidden");
+    openDetails.innerHTML = "";
+  }
+
+  if (openButton) {
+    openButton.classList.remove("selected");
+    openButton.setAttribute("aria-expanded", "false");
+  }
+
+  expandedSessionId = null;
+}
+
+async function toggleSessionDetails(session, sessionItem, button, detailsElement) {
+  button.dataset.sessionId = session.id;
+
+  if (expandedSessionId === session.id && !detailsElement.classList.contains("hidden")) {
+    collapseExpandedSession();
+    return;
+  }
+
+  collapseExpandedSession();
+
+  expandedSessionId = session.id;
+  button.classList.add("selected");
+  button.setAttribute("aria-expanded", "true");
+  detailsElement.classList.remove("hidden");
+  detailsElement.innerHTML = `<p class="sessions-status">Loading ${formatSessionTitle(session)}...</p>`;
+
+  await loadSessionDetails(session, detailsElement);
+}
+
+async function loadSessionDetails(session, targetElement) {
   try {
     const supabaseClient = getSupabaseClient();
     const { data: records, error } = await supabaseClient
@@ -585,13 +637,13 @@ async function loadSessionDetails(session) {
       list.appendChild(row);
     });
 
-    sessionDetailsElement.innerHTML = "";
-    sessionDetailsElement.appendChild(detailTitle);
-    sessionDetailsElement.appendChild(summary);
-    sessionDetailsElement.appendChild(list);
+    targetElement.innerHTML = "";
+    targetElement.appendChild(detailTitle);
+    targetElement.appendChild(summary);
+    targetElement.appendChild(list);
   } catch (error) {
     console.error(error);
-    sessionDetailsElement.innerHTML = `<p class="sessions-status error">Could not load player records. Check Supabase select policies for attendance_records.</p>`;
+    targetElement.innerHTML = `<p class="sessions-status error">Could not load player records. Check Supabase select policies for attendance_records.</p>`;
   }
 }
 

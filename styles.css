@@ -250,8 +250,8 @@ h2 {
   position: sticky;
   bottom: 0;
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
   padding: 16px 0 8px;
   background: linear-gradient(transparent, var(--bg) 25%);
 }
@@ -262,8 +262,8 @@ h2 {
 .small-button {
   border: 0;
   border-radius: 12px;
-  padding: 14px;
-  font-size: 1rem;
+  padding: 12px 6px;
+  font-size: 0.9rem;
   font-weight: 800;
   cursor: pointer;
 }
@@ -314,8 +314,11 @@ h2 {
     font-size: 0.85rem;
   }
 
-  .actions {
-    grid-template-columns: 1fr 1fr 1fr;
+  .primary-button,
+  .danger-button,
+  .secondary-button {
+    padding: 14px;
+    font-size: 1rem;
   }
 }
 
@@ -474,7 +477,12 @@ h2 {
 .sessions-list {
   display: grid;
   gap: 8px;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
+}
+
+.session-item {
+  display: grid;
+  gap: 0;
 }
 
 .session-row {
@@ -487,6 +495,13 @@ h2 {
   background: white;
   text-align: left;
   cursor: pointer;
+}
+
+.session-row.selected {
+  border-color: var(--primary);
+  background: #fff1f3;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
 }
 
 .session-row-title {
@@ -502,8 +517,15 @@ h2 {
 }
 
 .session-details {
-  border-top: 1px solid var(--border);
-  padding-top: 14px;
+  border: 1px solid var(--border);
+  border-top: 0;
+  border-radius: 0 0 12px 12px;
+  padding: 12px;
+  background: #fafafa;
+}
+
+.session-details.hidden {
+  display: none;
 }
 
 .session-details h3 {
