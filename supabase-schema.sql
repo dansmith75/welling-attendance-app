@@ -8,6 +8,7 @@ create table if not exists public.attendance_sessions (
   session_date date not null,
   session_type text not null check (session_type in ('Training', 'Match')),
   venue text check (venue in ('Home', 'Away')),
+  submitted_by text,
   submitted_at timestamptz not null default now(),
   source text not null default 'welling_attendance_app',
   payload jsonb not null
@@ -87,3 +88,8 @@ as permissive
 for select
 to anon
 using (true);
+
+
+-- v2.4: add the user who submitted the session if the table already exists.
+alter table public.attendance_sessions
+add column if not exists submitted_by text;

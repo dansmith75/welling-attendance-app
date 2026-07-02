@@ -1,6 +1,16 @@
 const TRAINING_STATUSES = ["Present", "Late", "Absent", "Injured"];
 const MATCH_STATUSES = ["Present", "Late", "No Show", "Unavailable", "Injured", "Rotated"];
 const STORAGE_KEY = "welling-red-attendance-v1";
+const USER_STORAGE_KEY = "welling-red-attendance-user-v1";
+const ADMIN_STORAGE_KEY = "welling-red-attendance-admin-unlocked-v1";
+
+const APP_USERS = [
+  { name: "Dan", role: "admin" },
+  { name: "John", role: "manager" },
+  { name: "Manager 2", role: "manager" },
+  { name: "Manager 3", role: "manager" },
+  { name: "Manager 4", role: "manager" }
+];
 
 const playerListElement = document.getElementById("player-list");
 const sessionTypeElements = document.querySelectorAll('input[name="session-type"]');
@@ -24,12 +34,22 @@ const closeSessionsButton = document.getElementById("close-sessions");
 const sessionsStatusElement = document.getElementById("sessions-status");
 const sessionsListElement = document.getElementById("sessions-list");
 const sessionDetailsElement = document.getElementById("session-details");
+const userSelectionElement = document.getElementById("user-selection");
+const userOptionsElement = document.getElementById("user-options");
+const currentUserNameElement = document.getElementById("current-user-name");
+const changeUserButton = document.getElementById("change-user");
+const adminUnlockButton = document.getElementById("admin-unlock");
+const adminToolsElement = document.getElementById("admin-tools");
+const exportExcelCsvButton = document.getElementById("export-excel-csv");
+const adminLockButton = document.getElementById("admin-lock");
 
 let players = [];
 let attendance = {};
 let feesPaid = {};
 let isSubmitting = false;
 let expandedSessionId = null;
+let currentUser = null;
+let isAdminUnlocked = localStorage.getItem(ADMIN_STORAGE_KEY) === "true";
 
 function todayAsLocalDate() {
   const today = new Date();
@@ -38,6 +58,106 @@ function todayAsLocalDate() {
   const day = String(today.getDate()).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
+}
+
+
+function getConfiguredAdminPin() {
+  const config = getSupabaseConfig();
+  return config.adminPin || "1234";
+}
+
+function loadSavedUser() {
+  const savedUserName = localStorage.getItem(USER_STORAGE_KEY);
+  if (!savedUserName) {
+    return null;
+  }
+
+  return APP_USERS.find((user) => user.name === savedUserName) || null;
+}
+
+function saveSelectedUser(user) {
+  currentUser = user;
+  localStorage.setItem(USER_STORAGE_KEY, user.name);
+  hideUserSelection();
+  updateUserUi();
+}
+
+function getCurrentUserName() {
+  return currentUser ? currentUser.name : "Unknown";
+}
+
+function renderUserOptions() {
+  userOptionsElement.innerHTML = "";
+
+  APP_USERS.forEach((user) => {
+    const button = document.createElement("button");
+    button.className = user.role === "admin" ? "user-option admin-user" : "user-option";
+    button.type = "button";
+    button.textContent = user.name;
+    button.addEventListener("click", () => saveSelectedUser(user));
+    userOptionsElement.appendChild(button);
+  });
+}
+
+function showUserSelection() {
+  renderUserOptions();
+  userSelectionElement.classList.remove("hidden");
+}
+
+function hideUserSelection() {
+  userSelectionElement.classList.add("hidden");
+}
+
+function updateUserUi() {
+  currentUserNameElement.textContent = currentUser ? `User: ${currentUser.name}` : "No user selected";
+
+  const isAdminUser = currentUser && currentUser.role === "admin";
+  adminUnlockButton.classList.toggle("hidden", !isAdminUser);
+
+  if (!isAdminUser) {
+    isAdminUnlocked = false;
+    localStorage.removeItem(ADMIN_STORAGE_KEY);
+  }
+
+  adminToolsElement.classList.toggle("hidden", !(isAdminUser && isAdminUnlocked));
+  adminUnlockButton.textContent = isAdminUnlocked ? "Admin ✓" : "Admin";
+}
+
+function changeUser() {
+  showUserSelection();
+}
+
+function unlockAdmin() {
+  if (!currentUser || currentUser.role !== "admin") {
+    window.alert("Admin tools are only available to Dan.");
+    return;
+  }
+
+  if (isAdminUnlocked) {
+    adminToolsElement.classList.toggle("hidden");
+    return;
+  }
+
+  const enteredPin = window.prompt("Enter admin PIN");
+
+  if (enteredPin === null) {
+    return;
+  }
+
+  if (enteredPin !== getConfiguredAdminPin()) {
+    window.alert("Incorrect PIN.");
+    return;
+  }
+
+  isAdminUnlocked = true;
+  localStorage.setItem(ADMIN_STORAGE_KEY, "true");
+  updateUserUi();
+}
+
+function lockAdmin() {
+  isAdminUnlocked = false;
+  localStorage.removeItem(ADMIN_STORAGE_KEY);
+  updateUserUi();
 }
 
 function getSelectedSessionType() {
@@ -236,7 +356,8 @@ function buildExportData() {
     session: {
       date: exportDate,
       type: sessionType,
-      venue: sessionType === "Match" ? matchVenue : null
+      venue: sessionType === "Match" ? matchVenue : null,
+      submittedBy: getCurrentUserName()
     },
     attendance: players
       .filter((player) => player.active)
@@ -351,6 +472,7 @@ function buildSessionRow(data) {
     session_date: data.session.date,
     session_type: data.session.type,
     venue: data.session.venue,
+    submitted_by: data.session.submittedBy,
     payload: data
   };
 }
@@ -370,6 +492,9 @@ function buildRecordRows(sessionId, data) {
 function setSubmitButtonBusy(isBusy) {
   exportButton.disabled = isBusy;
   clearButton.disabled = isBusy;
+  viewSessionsButton.disabled = isBusy;
+  adminUnlockButton.disabled = isBusy;
+  exportExcelCsvButton.disabled = isBusy;
   exportButton.textContent = isBusy ? "Submitting..." : "Submit";
 }
 
@@ -401,6 +526,11 @@ async function submitToSupabase(data) {
 
 async function submitAttendance({ force = false } = {}) {
   if (isSubmitting) {
+    return;
+  }
+
+  if (!currentUser) {
+    showUserSelection();
     return;
   }
 
@@ -499,7 +629,7 @@ async function loadRecentSessions() {
     const supabaseClient = getSupabaseClient();
     const { data: sessions, error } = await supabaseClient
       .from("attendance_sessions")
-      .select("id, session_date, session_type, venue, submitted_at")
+      .select("id, session_date, session_type, venue, submitted_by, submitted_at")
       .order("submitted_at", { ascending: false })
       .limit(10);
 
@@ -529,7 +659,8 @@ async function loadRecentSessions() {
 
       const meta = document.createElement("span");
       meta.className = "session-row-meta";
-      meta.textContent = `Submitted ${new Date(session.submitted_at).toLocaleString()}`;
+      const submittedBy = session.submitted_by ? ` by ${session.submitted_by}` : "";
+      meta.textContent = `Submitted${submittedBy} · ${new Date(session.submitted_at).toLocaleString()}`;
 
       const details = document.createElement("div");
       details.className = "session-details inline hidden";
@@ -647,6 +778,129 @@ async function loadSessionDetails(session, targetElement) {
   }
 }
 
+
+function csvEscape(value) {
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  const stringValue = String(value);
+
+  if (stringValue.includes('"') || stringValue.includes(",") || stringValue.includes("\n")) {
+    return `"${stringValue.replace(/"/g, '""')}"`;
+  }
+
+  return stringValue;
+}
+
+function downloadCsv(filename, rows) {
+  const csv = rows.map((row) => row.map(csvEscape).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = filename;
+  link.click();
+
+  URL.revokeObjectURL(url);
+}
+
+async function exportExcelCsv() {
+  if (!isAdminUnlocked || !currentUser || currentUser.role !== "admin") {
+    window.alert("Unlock admin tools first.");
+    return;
+  }
+
+  if (!isSupabaseConfigured()) {
+    window.alert("Supabase is not configured, so the Excel CSV cannot be exported.");
+    return;
+  }
+
+  try {
+    exportExcelCsvButton.disabled = true;
+    exportExcelCsvButton.textContent = "Exporting...";
+
+    const supabaseClient = getSupabaseClient();
+    const { data: sessions, error: sessionsError } = await supabaseClient
+      .from("attendance_sessions")
+      .select("id, session_date, session_type, venue, submitted_by, submitted_at")
+      .order("submitted_at", { ascending: false });
+
+    if (sessionsError) {
+      throw sessionsError;
+    }
+
+    if (!sessions || sessions.length === 0) {
+      window.alert("There are no sessions to export yet.");
+      return;
+    }
+
+    const sessionIds = sessions.map((session) => session.id);
+    const { data: records, error: recordsError } = await supabaseClient
+      .from("attendance_records")
+      .select("session_id, player_id, display_name, status, fee_paid, payment_status, late_payment")
+      .in("session_id", sessionIds);
+
+    if (recordsError) {
+      throw recordsError;
+    }
+
+    const sessionsById = sessions.reduce((lookup, session) => {
+      lookup[session.id] = session;
+      return lookup;
+    }, {});
+
+    const rows = [[
+      "SessionId",
+      "SessionDate",
+      "SessionType",
+      "Venue",
+      "SubmittedBy",
+      "SubmittedAt",
+      "PlayerId",
+      "DisplayName",
+      "Status",
+      "FeePaid",
+      "PaymentStatus",
+      "LatePayment",
+      "Source"
+    ]];
+
+    (records || []).forEach((record) => {
+      const session = sessionsById[record.session_id];
+
+      if (!session) {
+        return;
+      }
+
+      rows.push([
+        record.session_id,
+        session.session_date,
+        session.session_type,
+        session.venue || "",
+        session.submitted_by || "",
+        session.submitted_at || "",
+        record.player_id,
+        record.display_name,
+        record.status,
+        record.fee_paid === null || record.fee_paid === undefined ? "" : record.fee_paid,
+        record.payment_status || "",
+        Boolean(record.late_payment),
+        "App"
+      ]);
+    });
+
+    downloadCsv(`welling-attendance-excel-${todayAsLocalDate()}.csv`, rows);
+  } catch (error) {
+    console.error(error);
+    window.alert("Could not export Excel CSV. Check Supabase select policies and table columns.");
+  } finally {
+    exportExcelCsvButton.disabled = false;
+    exportExcelCsvButton.textContent = "Export Excel CSV";
+  }
+}
+
 function clearSession() {
   const confirmed = window.confirm("Clear all attendance marks and fee paid marks for this session?");
 
@@ -662,6 +916,13 @@ function clearSession() {
 }
 
 async function init() {
+  currentUser = loadSavedUser();
+  updateUserUi();
+
+  if (!currentUser) {
+    showUserSelection();
+  }
+
   const savedSession = loadSavedSession();
 
   setSelectedSessionType(savedSession.type || "Training");
@@ -703,6 +964,10 @@ async function init() {
   viewSessionsButton.addEventListener("click", showSessionsView);
   closeSessionsButton.addEventListener("click", hideSessionsView);
   clearButton.addEventListener("click", clearSession);
+  changeUserButton.addEventListener("click", changeUser);
+  adminUnlockButton.addEventListener("click", unlockAdmin);
+  adminLockButton.addEventListener("click", lockAdmin);
+  exportExcelCsvButton.addEventListener("click", exportExcelCsv);
 }
 
 init();

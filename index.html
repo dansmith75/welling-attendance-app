@@ -9,9 +9,13 @@
 <body>
   <header class="app-header">
     <img class="club-logo" src="Welling-Logo.jpg" alt="Welling United logo" onerror="this.style.display='none'" />
-    <div>
+    <div class="header-text">
       <p class="eyebrow">Welling United Red OBDSFL</p>
       <h1>Attendance</h1>
+      <div class="current-user-line">
+        <span id="current-user-name">No user selected</span>
+        <button id="change-user" class="link-button" type="button">Change</button>
+      </div>
     </div>
   </header>
 
@@ -62,8 +66,24 @@
       <button id="export-json" class="primary-button">Submit</button>
       <button id="clear-session" class="danger-button">Clear</button>
       <button id="view-sessions" class="secondary-button" type="button">Recent</button>
+      <button id="admin-unlock" class="secondary-button" type="button">Admin</button>
+    </section>
+
+    <section id="admin-tools" class="admin-tools hidden" aria-label="Admin tools">
+      <button id="export-excel-csv" class="secondary-button" type="button">Export Excel CSV</button>
+      <button id="admin-lock" class="small-button" type="button">Lock Admin</button>
     </section>
   </main>
+
+  <section id="user-selection" class="user-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="user-selection-title">
+    <div class="user-card">
+      <img class="user-logo" src="Welling-Logo.jpg" alt="Welling United logo" onerror="this.style.display='none'" />
+      <p class="eyebrow dark">Welling United Red OBDSFL</p>
+      <h2 id="user-selection-title">Who is using the app?</h2>
+      <p class="user-help">This name will be saved with each submitted attendance session.</p>
+      <div id="user-options" class="user-options"></div>
+    </div>
+  </section>
 
   <section id="unpaid-warning" class="warning-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="unpaid-warning-title">
     <div class="warning-card">

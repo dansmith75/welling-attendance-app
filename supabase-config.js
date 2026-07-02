@@ -5,4 +5,5 @@
 window.WELLING_SUPABASE_CONFIG = {
   url: "https://dszgeoimkilzeeqapish.supabase.co/",
   anonKey: "sb_publishable_uTJVDSSD7jPePv1BdODmSg_qO6U8get"
+adminPin: "1478"
 };

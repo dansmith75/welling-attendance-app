@@ -588,3 +588,120 @@ h2 {
   background: #fee2e2;
   color: var(--danger-dark);
 }
+
+.header-text {
+  min-width: 0;
+}
+
+.current-user-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 5px;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.link-button {
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.12);
+  color: white;
+  font-size: 0.72rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.user-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.user-overlay.hidden {
+  display: none;
+}
+
+.user-card {
+  width: min(100%, 420px);
+  background: white;
+  border-radius: 18px;
+  padding: 22px;
+  text-align: center;
+  box-shadow: var(--shadow);
+}
+
+.user-logo {
+  width: 68px;
+  height: 68px;
+  object-fit: contain;
+  margin-bottom: 10px;
+}
+
+.user-card h2 {
+  margin-bottom: 8px;
+  font-size: 1.45rem;
+}
+
+.user-help {
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.user-options {
+  display: grid;
+  gap: 10px;
+}
+
+.user-option {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+  background: white;
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.user-option.admin-user {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.admin-tools {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: white;
+  box-shadow: var(--shadow);
+}
+
+.admin-tools.hidden {
+  display: none;
+}
+
+.actions {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media (max-width: 420px) {
+  .primary-button,
+  .danger-button,
+  .secondary-button {
+    padding: 12px 3px;
+    font-size: 0.78rem;
+  }
+}
