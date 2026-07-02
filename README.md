@@ -1,21 +1,33 @@
-# Welling United Red OBDSFL Attendance App v2
+# Welling United Red Attendance App v2.5
 
-Simple mobile-first attendance app for Welling United Red OBDSFL.
+Mobile-first attendance capture app for Welling United Red OBDSFL.
 
-## v2 adds
+## v2.5
 
-- Supabase save on Submit
-- Local browser save while marking attendance
-- JSON download fallback if Supabase is not configured or submit fails
-- Home match unpaid warning before submit
+Adds an admin-only Excel-ready CSV export from Supabase.
 
-## Setup
+The CSV is a flat table designed to be imported into the Excel workbook as an `AttendanceRecords` table.
 
-1. Run `supabase-schema.sql` in Supabase SQL Editor.
-2. Copy your Supabase Project URL and anon/publishable key into `supabase-config.js`.
-3. Commit and push the files.
-4. Test from GitHub Pages.
+Columns exported:
 
-Never put the Supabase `service_role` key into this browser app.
+- RecordKey
+- SessionKey
+- SessionId
+- SessionDate
+- SessionType
+- Venue
+- PlayerId
+- DisplayName
+- Status
+- FeePaid
+- PaymentStatus
+- LatePayment
+- SubmittedBy
+- SubmittedAt
+- Source
 
-Deployment retry 2026-07-02 16:27
+Excel remains the editable source of truth after import. Supabase remains the pitch-side capture database.
+
+## Notes
+
+Keep your existing `supabase-config.js` when upgrading so your real Supabase URL, key and admin PIN are preserved.
