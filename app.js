@@ -803,7 +803,8 @@ function csvEscape(value) {
 }
 
 function downloadCsv(filename, rows) {
-  const csv = rows.map((row) => row.map(csvEscape).join(",")).join("\n");
+  // The BOM at the start helps Excel open UTF-8 CSV files cleanly.
+  const csv = `\uFEFF${rows.map((row) => row.map(csvEscape).join(",")).join("\n")}`;
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -813,6 +814,26 @@ function downloadCsv(filename, rows) {
   link.click();
 
   URL.revokeObjectURL(url);
+}
+
+function makeSessionKey(session) {
+  const datePart = session.session_date || "unknown-date";
+  const typePart = (session.session_type || "session").toLowerCase();
+  const venuePart = (session.venue || "na").toLowerCase();
+
+  return `${datePart}-${typePart}-${venuePart}-${String(session.id).slice(0, 8)}`;
+}
+
+function makeAttendanceRecordKey(session, record) {
+  return `${makeSessionKey(session)}-${record.player_id}`;
+}
+
+function yesNoBlank(value) {
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  return value ? "Yes" : "No";
 }
 
 async function exportExcelCsv() {
@@ -861,46 +882,67 @@ async function exportExcelCsv() {
     }, {});
 
     const rows = [[
+      "RecordKey",
+      "SessionKey",
       "SessionId",
       "SessionDate",
       "SessionType",
       "Venue",
-      "SubmittedBy",
-      "SubmittedAt",
       "PlayerId",
       "DisplayName",
       "Status",
       "FeePaid",
       "PaymentStatus",
       "LatePayment",
+      "SubmittedBy",
+      "SubmittedAt",
       "Source"
     ]];
 
-    (records || []).forEach((record) => {
+    const sortedRecords = (records || [])
+      .filter((record) => sessionsById[record.session_id])
+      .sort((a, b) => {
+        const sessionA = sessionsById[a.session_id];
+        const sessionB = sessionsById[b.session_id];
+        const dateCompare = String(sessionA.session_date || "").localeCompare(String(sessionB.session_date || ""));
+
+        if (dateCompare !== 0) {
+          return dateCompare;
+        }
+
+        const submittedCompare = String(sessionA.submitted_at || "").localeCompare(String(sessionB.submitted_at || ""));
+
+        if (submittedCompare !== 0) {
+          return submittedCompare;
+        }
+
+        return String(a.display_name || "").localeCompare(String(b.display_name || ""));
+      });
+
+    sortedRecords.forEach((record) => {
       const session = sessionsById[record.session_id];
 
-      if (!session) {
-        return;
-      }
-
       rows.push([
+        makeAttendanceRecordKey(session, record),
+        makeSessionKey(session),
         record.session_id,
         session.session_date,
         session.session_type,
         session.venue || "",
-        session.submitted_by || "",
-        session.submitted_at || "",
         record.player_id,
         record.display_name,
         record.status,
-        record.fee_paid === null || record.fee_paid === undefined ? "" : record.fee_paid,
+        yesNoBlank(record.fee_paid),
         record.payment_status || "",
-        Boolean(record.late_payment),
+        yesNoBlank(record.late_payment),
+        session.submitted_by || "",
+        session.submitted_at || "",
         "App"
       ]);
     });
 
     downloadCsv(`welling-attendance-excel-${todayAsLocalDate()}.csv`, rows);
+    showSuccessMessage("Excel CSV exported.");
   } catch (error) {
     console.error(error);
     window.alert("Could not export Excel CSV. Check Supabase select policies and table columns.");
