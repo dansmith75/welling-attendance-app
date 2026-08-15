@@ -20,10 +20,6 @@ const clearButton = document.getElementById("clear-session");
 const summaryTotalElement = document.getElementById("summary-total");
 const summaryPresentElement = document.getElementById("summary-present");
 const summaryMissingElement = document.getElementById("summary-missing");
-const unpaidWarningElement = document.getElementById("unpaid-warning");
-const unpaidPlayerListElement = document.getElementById("unpaid-player-list");
-const continueSubmitButton = document.getElementById("continue-submit");
-const cancelSubmitButton = document.getElementById("cancel-submit");
 const successMessageElement = document.getElementById("success-message");
 const successMessageTextElement = document.getElementById("success-message-text");
 const successOkButton = document.getElementById("success-ok");
@@ -44,7 +40,6 @@ const adminLockButton = document.getElementById("admin-lock");
 
 let players = [];
 let attendance = {};
-let feesPaid = {};
 let isSubmitting = false;
 let expandedSessionId = null;
 let currentUser = null;
@@ -211,8 +206,7 @@ function loadSavedSession() {
     return {
       type: "Training",
       venue: "Home",
-      attendance: {},
-      feesPaid: {}
+      attendance: {}
     };
   }
 
@@ -223,37 +217,18 @@ function saveSession() {
   const session = {
     type: getSelectedSessionType(),
     venue: getSelectedMatchVenue(),
-    attendance,
-    feesPaid
+    attendance
   };
 
   localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
 }
 
-function cleanUpFeesPaid() {
-  Object.keys(feesPaid).forEach((playerId) => {
-    if (!shouldShowFeePaidButton(playerId)) {
-      delete feesPaid[playerId];
-    }
-  });
-}
 
 function setPlayerStatus(playerId, status) {
   attendance[playerId] = status;
-
-  if (!shouldTrackFeeForStatus(status)) {
-    delete feesPaid[playerId];
-  }
-
   saveSession();
   renderPlayers();
   updateSummary();
-}
-
-function toggleFeePaid(playerId) {
-  feesPaid[playerId] = !feesPaid[playerId];
-  saveSession();
-  renderPlayers();
 }
 
 function getVisibleStatuses() {
@@ -274,74 +249,49 @@ function getPlayerStatusForCurrentSession(playerId) {
   return status;
 }
 
-function shouldTrackFeeForStatus(status) {
-  return status === "Present" || status === "Late";
-}
 
-function shouldShowFeePaidButton(playerId) {
-  return isHomeMatch() && shouldTrackFeeForStatus(getPlayerStatusForCurrentSession(playerId));
-}
 
 function renderPlayers() {
   playerListElement.innerHTML = "";
 
-  players
-    .filter((player) => player.active)
-    .forEach((player) => {
-      const card = document.createElement("article");
-      card.className = "player-card";
+  players.forEach((player) => {
+    const card = document.createElement("article");
+    card.className = "player-card";
 
-      const name = document.createElement("div");
-      name.className = "player-name";
-      name.textContent = player.displayName;
+    const name = document.createElement("div");
+    name.className = "player-name";
+    name.textContent = player.displayName;
 
-      const buttonGrid = document.createElement("div");
-      buttonGrid.className = "status-buttons";
+    const buttonGrid = document.createElement("div");
+    buttonGrid.className = "status-buttons";
 
-      const visibleStatuses = getVisibleStatuses();
-      const showFeePaid = shouldShowFeePaidButton(player.id);
-      const buttonCount = visibleStatuses.length + (showFeePaid ? 1 : 0);
-      buttonGrid.style.setProperty("--button-count", buttonCount);
-      buttonGrid.classList.add(`button-count-${buttonCount}`);
+    const visibleStatuses = getVisibleStatuses();
+    buttonGrid.style.setProperty("--button-count", visibleStatuses.length);
+    buttonGrid.classList.add(`button-count-${visibleStatuses.length}`);
 
-      visibleStatuses.forEach((status) => {
-        const button = document.createElement("button");
-        button.className = "status-button";
-        button.classList.add(`status-${status.toLowerCase().replace(/\s+/g, "-")}`);
-        button.type = "button";
-        button.textContent = status;
+    visibleStatuses.forEach((status) => {
+      const button = document.createElement("button");
+      button.className = "status-button";
+      button.classList.add(`status-${status.toLowerCase().replace(/\s+/g, "-")}`);
+      button.type = "button";
+      button.textContent = status;
 
-        if (getPlayerStatusForCurrentSession(player.id) === status) {
-          button.classList.add("selected");
-        }
-
-        button.addEventListener("click", () => setPlayerStatus(player.id, status));
-        buttonGrid.appendChild(button);
-      });
-
-      if (showFeePaid) {
-        const feeButton = document.createElement("button");
-        feeButton.className = "fee-paid-button";
-        feeButton.type = "button";
-        feeButton.textContent = feesPaid[player.id] ? "Paid ✓" : "Paid";
-        feeButton.title = feesPaid[player.id] ? "Fee Paid" : "Fee Not Paid";
-
-        if (feesPaid[player.id]) {
-          feeButton.classList.add("selected");
-        }
-
-        feeButton.addEventListener("click", () => toggleFeePaid(player.id));
-        buttonGrid.appendChild(feeButton);
+      if (getPlayerStatusForCurrentSession(player.id) === status) {
+        button.classList.add("selected");
       }
 
-      card.appendChild(name);
-      card.appendChild(buttonGrid);
-      playerListElement.appendChild(card);
+      button.addEventListener("click", () => setPlayerStatus(player.id, status));
+      buttonGrid.appendChild(button);
     });
+
+    card.appendChild(name);
+    card.appendChild(buttonGrid);
+    playerListElement.appendChild(card);
+  });
 }
 
 function updateSummary() {
-  const activePlayers = players.filter((player) => player.active);
+  const activePlayers = players;
   const presentCount = activePlayers.filter((player) => {
     const status = getPlayerStatusForCurrentSession(player.id);
     return status === "Present" || status === "Late";
@@ -357,7 +307,6 @@ function buildExportData() {
   const exportDate = todayAsLocalDate();
   const sessionType = getSelectedSessionType();
   const matchVenue = getSelectedMatchVenue();
-  const includeFeePaid = sessionType === "Match" && matchVenue === "Home";
 
   return {
     team: "Welling United Red OBDSFL",
@@ -368,57 +317,12 @@ function buildExportData() {
       venue: sessionType === "Match" ? matchVenue : null,
       submittedBy: getCurrentUserName()
     },
-    attendance: players
-      .filter((player) => player.active)
-      .map((player) => {
-        const record = {
-          playerId: player.id,
-          displayName: player.displayName,
-          status: getPlayerStatusForCurrentSession(player.id) || "Unmarked"
-        };
-
-        if (includeFeePaid && shouldTrackFeeForStatus(record.status)) {
-          const feePaid = Boolean(feesPaid[player.id]);
-          record.feePaid = feePaid;
-          record.paymentStatus = feePaid ? "Paid" : "Not Paid";
-
-          if (!feePaid) {
-            record.latePayment = true;
-          }
-        }
-
-        return record;
-      })
+    attendance: players.map((player) => ({
+      playerId: player.id,
+      displayName: player.displayName,
+      status: getPlayerStatusForCurrentSession(player.id) || "Unmarked"
+    }))
   };
-}
-
-function getUnpaidHomeMatchPlayers() {
-  if (!isHomeMatch()) {
-    return [];
-  }
-
-  return players
-    .filter((player) => player.active)
-    .filter((player) => {
-      const status = getPlayerStatusForCurrentSession(player.id);
-      return shouldTrackFeeForStatus(status) && !feesPaid[player.id];
-    });
-}
-
-function showUnpaidWarning(unpaidPlayers) {
-  unpaidPlayerListElement.innerHTML = "";
-
-  unpaidPlayers.forEach((player) => {
-    const listItem = document.createElement("li");
-    listItem.textContent = player.displayName;
-    unpaidPlayerListElement.appendChild(listItem);
-  });
-
-  unpaidWarningElement.classList.remove("hidden");
-}
-
-function hideUnpaidWarning() {
-  unpaidWarningElement.classList.add("hidden");
 }
 
 function showSuccessMessage(sessionId) {
@@ -431,14 +335,11 @@ function hideSuccessMessage() {
 }
 
 function hasMarkedPlayers() {
-  return players
-    .filter((player) => player.active)
-    .some((player) => Boolean(getPlayerStatusForCurrentSession(player.id)));
+  return players.some((player) => Boolean(getPlayerStatusForCurrentSession(player.id)));
 }
 
 function resetCurrentSessionMarks() {
   attendance = {};
-  feesPaid = {};
   saveSession();
   renderPlayers();
   updateSummary();
@@ -491,10 +392,7 @@ function buildRecordRows(sessionId, data) {
     session_id: sessionId,
     player_id: record.playerId,
     display_name: record.displayName,
-    status: record.status,
-    fee_paid: typeof record.feePaid === "boolean" ? record.feePaid : null,
-    payment_status: record.paymentStatus || null,
-    late_payment: Boolean(record.latePayment)
+    status: record.status
   }));
 }
 
@@ -533,7 +431,7 @@ async function submitToSupabase(data) {
   return insertedSession.id;
 }
 
-async function submitAttendance({ force = false } = {}) {
+async function submitAttendance() {
   if (isSubmitting) {
     return;
   }
@@ -548,12 +446,6 @@ async function submitAttendance({ force = false } = {}) {
     return;
   }
 
-  const unpaidPlayers = getUnpaidHomeMatchPlayers();
-
-  if (!force && unpaidPlayers.length > 0) {
-    showUnpaidWarning(unpaidPlayers);
-    return;
-  }
 
   const data = buildExportData();
 
@@ -734,7 +626,7 @@ async function loadSessionDetails(session, targetElement) {
     const supabaseClient = getSupabaseClient();
     const { data: records, error } = await supabaseClient
       .from("attendance_records")
-      .select("player_id, display_name, status, fee_paid, payment_status, late_payment")
+      .select("player_id, display_name, status")
       .eq("session_id", session.id)
       .order("display_name", { ascending: true });
 
@@ -767,12 +659,6 @@ async function loadSessionDetails(session, targetElement) {
       row.appendChild(name);
       row.appendChild(status);
 
-      if (record.payment_status) {
-        const payment = document.createElement("span");
-        payment.className = record.fee_paid ? "record-payment paid" : "record-payment not-paid";
-        payment.textContent = record.fee_paid ? "Paid" : "Not Paid";
-        row.appendChild(payment);
-      }
 
       list.appendChild(row);
     });
@@ -828,13 +714,6 @@ function makeAttendanceRecordKey(session, record) {
   return `${makeSessionKey(session)}-${record.player_id}`;
 }
 
-function yesNoBlank(value) {
-  if (value === null || value === undefined) {
-    return "";
-  }
-
-  return value ? "Yes" : "No";
-}
 
 async function exportExcelCsv() {
   if (!isAdminUnlocked || !currentUser || currentUser.role !== "admin") {
@@ -869,7 +748,7 @@ async function exportExcelCsv() {
     const sessionIds = sessions.map((session) => session.id);
     const { data: records, error: recordsError } = await supabaseClient
       .from("attendance_records")
-      .select("session_id, player_id, display_name, status, fee_paid, payment_status, late_payment")
+      .select("session_id, player_id, display_name, status")
       .in("session_id", sessionIds);
 
     if (recordsError) {
@@ -891,9 +770,6 @@ async function exportExcelCsv() {
       "PlayerId",
       "DisplayName",
       "Status",
-      "FeePaid",
-      "PaymentStatus",
-      "LatePayment",
       "SubmittedBy",
       "SubmittedAt",
       "Source"
@@ -932,9 +808,6 @@ async function exportExcelCsv() {
         record.player_id,
         record.display_name,
         record.status,
-        yesNoBlank(record.fee_paid),
-        record.payment_status || "",
-        yesNoBlank(record.late_payment),
         session.submitted_by || "",
         session.submitted_at || "",
         "App"
@@ -953,14 +826,13 @@ async function exportExcelCsv() {
 }
 
 function clearSession() {
-  const confirmed = window.confirm("Clear all attendance marks and fee paid marks for this session?");
+  const confirmed = window.confirm("Clear all attendance marks for this session?");
 
   if (!confirmed) {
     return;
   }
 
   attendance = {};
-  feesPaid = {};
   saveSession();
   renderPlayers();
   updateSummary();
@@ -976,11 +848,17 @@ async function init() {
   setSelectedSessionType(savedSession.type || "Training");
   setSelectedMatchVenue(savedSession.venue || "Home");
   attendance = savedSession.attendance || {};
-  feesPaid = savedSession.feesPaid || {};
   updateMatchVenueVisibility();
 
   const response = await fetch("players.json");
-  players = await response.json();
+  const loadedPlayers = await response.json();
+  players = loadedPlayers
+    .filter((player) => player.active === true)
+    .map((player) => ({
+      id: player.id,
+      displayName: player.displayName,
+      active: true
+    }));
 
   renderPlayers();
   updateSummary();
@@ -988,7 +866,6 @@ async function init() {
   sessionTypeElements.forEach((element) => {
     element.addEventListener("change", () => {
       updateMatchVenueVisibility();
-      cleanUpFeesPaid();
       saveSession();
       renderPlayers();
     });
@@ -996,18 +873,12 @@ async function init() {
 
   matchVenueElements.forEach((element) => {
     element.addEventListener("change", () => {
-      cleanUpFeesPaid();
       saveSession();
       renderPlayers();
     });
   });
 
   exportButton.addEventListener("click", () => submitAttendance());
-  continueSubmitButton.addEventListener("click", () => {
-    hideUnpaidWarning();
-    submitAttendance({ force: true });
-  });
-  cancelSubmitButton.addEventListener("click", hideUnpaidWarning);
   successOkButton.addEventListener("click", hideSuccessMessage);
   viewSessionsButton.addEventListener("click", showSessionsView);
   closeSessionsButton.addEventListener("click", hideSessionsView);

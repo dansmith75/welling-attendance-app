@@ -1,4 +1,4 @@
--- Welling United Red OBDSFL Attendance App v2 schema
+-- Welling United Red OBDSFL Attendance App v3 schema
 -- Run this in Supabase SQL Editor.
 
 create table if not exists public.attendance_sessions (
@@ -20,9 +20,6 @@ create table if not exists public.attendance_records (
   player_id text not null,
   display_name text not null,
   status text not null,
-  fee_paid boolean,
-  payment_status text,
-  late_payment boolean not null default false,
   created_at timestamptz not null default now()
 );
 

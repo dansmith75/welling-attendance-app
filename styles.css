@@ -184,21 +184,6 @@ h2 {
 }
 
 .status-button,
-.fee-paid-button {
-  min-width: 0;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 8px 1px;
-  background: white;
-  color: var(--text);
-  font-size: 0.6rem;
-  font-weight: 800;
-  line-height: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  cursor: pointer;
-}
 
 .status-button.selected {
   background: var(--primary);
@@ -231,20 +216,8 @@ h2 {
   border-color: var(--purple);
 }
 
-.fee-paid-button {
-  border-color: var(--success);
-  color: var(--success);
-}
 
-.fee-paid-button.selected {
-  background: var(--success);
-  color: white;
-  border-color: var(--success);
-}
 
-.fee-paid-button:hover {
-  border-color: var(--success-dark);
-}
 
 .actions {
   position: sticky;
@@ -308,8 +281,7 @@ h2 {
     gap: 8px;
   }
 
-  .status-button,
-  .fee-paid-button {
+  .status-button {
     padding: 10px 8px;
     font-size: 0.85rem;
   }
@@ -357,15 +329,7 @@ h2 {
   font-weight: 700;
 }
 
-.unpaid-player-list {
-  margin: 0 0 18px;
-  padding-left: 22px;
-  font-weight: 800;
-}
 
-.unpaid-player-list li + li {
-  margin-top: 6px;
-}
 
 .warning-actions {
   display: grid;
@@ -559,13 +523,6 @@ h2 {
 }
 
 .record-status,
-.record-payment {
-  border-radius: 999px;
-  padding: 5px 8px;
-  font-size: 0.72rem;
-  font-weight: 900;
-  white-space: nowrap;
-}
 
 .record-status {
   background: #f3f4f6;
@@ -579,15 +536,7 @@ h2 {
 .record-rotated { background: #ede9fe; color: var(--purple-dark); }
 .record-no-show { background: #fee2e2; color: var(--danger-dark); }
 
-.record-payment.paid {
-  background: #dcfce7;
-  color: var(--success-dark);
-}
 
-.record-payment.not-paid {
-  background: #fee2e2;
-  color: var(--danger-dark);
-}
 
 .header-text {
   min-width: 0;

@@ -31,3 +31,10 @@ Excel remains the editable source of truth after import. Supabase remains the pi
 ## Notes
 
 Keep your existing `supabase-config.js` when upgrading so your real Supabase URL, key and admin PIN are preserved.
+
+
+## v3
+- Payment tracking removed; the fixed monthly fee is managed in Excel.
+- Player list contains active players only.
+- User-facing player names use `displayName`; IDs are internal only.
+- Run `RESET-TEST-DATA.sql` once in Supabase to clear test sessions.
