@@ -70,3 +70,12 @@ window.WELLING_APP_CONFIG = {
     }
   }, true);
 })();
+
+// Load resilience/correction features only after all core Matchday scripts have
+// finished initialising. Keeping this deferred avoids racing matchday.js.
+window.addEventListener("load", () => {
+  const script = document.createElement("script");
+  script.src = "matchday-resilience.js";
+  script.defer = true;
+  document.body.appendChild(script);
+});
