@@ -37,8 +37,6 @@ window.WELLING_APP_CONFIG = {
 })();
 
 // Matchday starting XI guard.
-// This script loads before matchday.js, so the capture listeners below run
-// before Matchday's own checkbox / Start Match handlers.
 (() => {
   const MAX_STARTERS = 11;
   const starterList = document.getElementById("matchday-starter-list");
@@ -49,9 +47,7 @@ window.WELLING_APP_CONFIG = {
   starterList.addEventListener("change", (event) => {
     const input = event.target;
     if (!(input instanceof HTMLInputElement) || input.type !== "checkbox" || !input.checked) return;
-
     const selectedCount = starterList.querySelectorAll('input[type="checkbox"]:checked').length;
-
     if (selectedCount > MAX_STARTERS) {
       event.stopImmediatePropagation();
       input.checked = false;
@@ -61,7 +57,6 @@ window.WELLING_APP_CONFIG = {
 
   document.addEventListener("click", (event) => {
     if (event.target !== startButton) return;
-
     const selectedCount = starterList.querySelectorAll('input[type="checkbox"]:checked').length;
     if (selectedCount > MAX_STARTERS) {
       event.preventDefault();
@@ -71,11 +66,15 @@ window.WELLING_APP_CONFIG = {
   }, true);
 })();
 
-// Load resilience/correction features only after all core Matchday scripts have
-// finished initialising. Keeping this deferred avoids racing matchday.js.
+// Load resilience/correction features only after the core Matchday scripts have
+// initialised, then wire explicit persistence hooks after resilience itself.
 window.addEventListener("load", () => {
-  const script = document.createElement("script");
-  script.src = "matchday-resilience.js";
-  script.defer = true;
-  document.body.appendChild(script);
+  const resilience = document.createElement("script");
+  resilience.src = "matchday-resilience.js";
+  resilience.onload = () => {
+    const hooks = document.createElement("script");
+    hooks.src = "matchday-resilience-hooks.js";
+    document.body.appendChild(hooks);
+  };
+  document.body.appendChild(resilience);
 });
