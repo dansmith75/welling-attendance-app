@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Welling United Red Attendance</title>
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="app.css" />
 </head>
 <body>
   <header class="app-header">
@@ -67,6 +67,7 @@
       <button id="clear-session" class="danger-button">Clear</button>
       <button id="view-sessions" class="secondary-button" type="button">Recent</button>
       <button id="admin-unlock" class="secondary-button" type="button">Admin</button>
+      <button id="open-matchday" class="matchday-launch hidden" type="button">⚽ Matchday</button>
     </section>
 
     <section id="admin-tools" class="admin-tools hidden" aria-label="Admin tools">
@@ -111,8 +112,100 @@
     </div>
   </section>
 
+
+  <section id="matchday-view" class="matchday-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="matchday-title">
+    <div class="matchday-card">
+      <div class="matchday-header">
+        <div>
+          <p class="eyebrow dark">Welling United Red</p>
+          <h2 id="matchday-title">Matchday</h2>
+        </div>
+        <button id="close-matchday" class="small-button" type="button">Close</button>
+      </div>
+
+      <div id="matchday-setup">
+        <label class="matchday-label" for="matchday-fixture">Fixture</label>
+        <select id="matchday-fixture" class="matchday-select"></select>
+        <p id="matchday-fixture-meta" class="matchday-help"></p>
+
+        <div class="matchday-section-title">
+          <div>
+            <strong>Squad</strong>
+            <span id="matchday-squad-count">0 / 16</span>
+          </div>
+          <span>Select up to 16</span>
+        </div>
+        <div id="matchday-squad-list" class="matchday-player-grid"></div>
+
+        <div class="matchday-section-title">
+          <div>
+            <strong>Starting XI</strong>
+            <span id="matchday-starter-count">0 / 11</span>
+          </div>
+          <span>Choose exactly 11</span>
+        </div>
+        <div id="matchday-starter-list" class="matchday-player-grid"></div>
+
+        <button id="matchday-start" class="primary-button matchday-wide" type="button">Start Match</button>
+      </div>
+
+      <div id="matchday-live" class="hidden">
+        <div class="matchday-scoreboard">
+          <div id="matchday-live-fixture" class="matchday-live-fixture">Fixture</div>
+          <div id="matchday-clock" class="matchday-clock">00:00</div>
+          <div id="matchday-clock-state" class="matchday-clock-state">Ready</div>
+        </div>
+
+        <div class="matchday-live-actions">
+          <button id="matchday-pause" class="secondary-button" type="button">Pause / Half Time</button>
+          <button id="matchday-resume" class="secondary-button hidden" type="button">Resume</button>
+        </div>
+
+        <section class="matchday-live-section">
+          <h3>Players on pitch</h3>
+          <div id="matchday-lineup" class="matchday-lineup"></div>
+        </section>
+
+        <section class="matchday-live-section">
+          <h3>Substitution</h3>
+          <div class="matchday-sub-grid">
+            <label>
+              Player off
+              <select id="matchday-sub-off" class="matchday-select"></select>
+            </label>
+            <label>
+              Player on
+              <select id="matchday-sub-on" class="matchday-select"></select>
+            </label>
+            <label>
+              Minute
+              <input id="matchday-sub-minute" class="matchday-input" type="number" min="0" step="1" />
+            </label>
+          </div>
+          <button id="matchday-add-sub" class="secondary-button matchday-wide" type="button">Record Substitution</button>
+          <div id="matchday-sub-list" class="matchday-sub-list"></div>
+        </section>
+
+        <button id="matchday-fulltime" class="danger-button matchday-wide" type="button">Full Time</button>
+      </div>
+
+      <div id="matchday-finished" class="hidden">
+        <div class="matchday-scoreboard">
+          <div id="matchday-finished-fixture" class="matchday-live-fixture">Fixture</div>
+          <div id="matchday-finished-clock" class="matchday-clock">00:00</div>
+          <div class="matchday-clock-state">Full Time</div>
+        </div>
+        <h3>Minutes played</h3>
+        <div id="matchday-minutes-list" class="matchday-minutes-list"></div>
+        <p id="matchday-save-status" class="matchday-help"></p>
+        <button id="matchday-reset" class="secondary-button matchday-wide" type="button">Start New Matchday</button>
+      </div>
+    </div>
+  </section>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
   <script src="app.js"></script>
+  <script src="matchday.js"></script>
 </body>
 </html>

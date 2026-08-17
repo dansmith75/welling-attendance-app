@@ -38,3 +38,13 @@ Keep your existing `supabase-config.js` when upgrading so your real Supabase URL
 - Player list contains active players only.
 - User-facing player names use `displayName`; IDs are internal only.
 - Run `RESET-TEST-DATA.sql` once in Supabase to clear test sessions.
+
+
+## Matchday Mode v1
+- Fixture selection from `matches.json`.
+- Squad selection (max 16) and Starting XI (exactly 11).
+- Start/pause/resume/full-time match clock.
+- Substitution tracking with editable minute entry and rolling substitutions supported.
+- Automatic minutes played calculation.
+- Finished Matchday saved to Supabase `matchday_sessions` with JSON backup on failure.
+- Run `MATCHDAY-V1-SCHEMA.sql` once before first use.
