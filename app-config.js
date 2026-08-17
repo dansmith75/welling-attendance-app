@@ -66,14 +66,18 @@ window.WELLING_APP_CONFIG = {
   }, true);
 })();
 
-// Load resilience/correction features only after the core Matchday scripts have
-// initialised, then wire explicit persistence hooks after resilience itself.
+// Load Matchday extensions after the core scripts have initialised.
 window.addEventListener("load", () => {
   const resilience = document.createElement("script");
   resilience.src = "matchday-resilience.js";
   resilience.onload = () => {
     const hooks = document.createElement("script");
     hooks.src = "matchday-resilience-hooks.js";
+    hooks.onload = () => {
+      const ui = document.createElement("script");
+      ui.src = "matchday-ui-v2.js";
+      document.body.appendChild(ui);
+    };
     document.body.appendChild(hooks);
   };
   document.body.appendChild(resilience);
