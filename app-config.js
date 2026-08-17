@@ -35,3 +35,38 @@ window.WELLING_APP_CONFIG = {
     return nativeFetch(input, init);
   };
 })();
+
+// Matchday starting XI guard.
+// This script loads before matchday.js, so the capture listeners below run
+// before Matchday's own checkbox / Start Match handlers.
+(() => {
+  const MAX_STARTERS = 11;
+  const starterList = document.getElementById("matchday-starter-list");
+  const startButton = document.getElementById("matchday-start");
+
+  if (!starterList || !startButton) return;
+
+  starterList.addEventListener("change", (event) => {
+    const input = event.target;
+    if (!(input instanceof HTMLInputElement) || input.type !== "checkbox" || !input.checked) return;
+
+    const selectedCount = starterList.querySelectorAll('input[type="checkbox"]:checked').length;
+
+    if (selectedCount > MAX_STARTERS) {
+      event.stopImmediatePropagation();
+      input.checked = false;
+      window.alert("Starting lineup is limited to a maximum of 11 players.");
+    }
+  }, true);
+
+  document.addEventListener("click", (event) => {
+    if (event.target !== startButton) return;
+
+    const selectedCount = starterList.querySelectorAll('input[type="checkbox"]:checked').length;
+    if (selectedCount > MAX_STARTERS) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      window.alert(`You currently have ${selectedCount} starters selected. Reduce the starting lineup to 11 or fewer.`);
+    }
+  }, true);
+})();
