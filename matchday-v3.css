@@ -1,0 +1,146 @@
+.matchday-divider-title {
+  display: block;
+  width: 100%;
+  margin: 0 -12px 12px;
+  padding: 10px 12px;
+  background: #eef0f3;
+  border-top: 1px solid #d9dde5;
+  border-bottom: 1px solid #d9dde5;
+  border-radius: 10px;
+  font-size: .95rem;
+}
+
+.matchday-player-choice {
+  width: 100%;
+  text-align: left;
+  background: #fff;
+  color: var(--text);
+}
+
+.matchday-player-choice.selected {
+  border-color: var(--primary);
+  background: rgba(200, 16, 46, .08);
+  color: var(--primary-dark);
+}
+
+.matchday-position-chips-flat {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
+}
+
+.matchday-pos-run {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+}
+
+.matchday-tick-button {
+  align-self: end;
+  width: 46px;
+  min-width: 46px;
+  height: 46px;
+  border: 0;
+  border-radius: 11px;
+  background: #16a34a;
+  color: #fff;
+  font-size: 1.45rem;
+  font-weight: 950;
+  line-height: 1;
+  padding: 0;
+}
+
+.matchday-tick-button:hover { background: #15803d; }
+
+.matchday-sub-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 90px 46px;
+  align-items: end;
+}
+
+.matchday-event-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) 90px 46px;
+  align-items: end;
+}
+
+#matchday-player-event-text-label {
+  grid-column: span 2;
+}
+
+.matchday-halftime-button {
+  background: #fff2df !important;
+  border-color: #f2bf75 !important;
+  color: #8a4b08 !important;
+}
+
+.matchday-fulltime-button {
+  width: 100%;
+  margin-top: 18px;
+  border: 0;
+  border-radius: 11px;
+  padding: 14px;
+  background: #16a34a;
+  color: #fff;
+  font-weight: 950;
+}
+
+.matchday-fulltime-button:hover { background: #15803d; }
+
+.matchday-cancel-bottom {
+  margin-top: 28px !important;
+}
+
+.matchday-spanner {
+  flex: 0 0 auto;
+  border: 1px solid #d9dde5;
+  border-radius: 9px;
+  background: #fff;
+  padding: 6px 9px;
+  font-size: 1rem;
+}
+
+.matchday-sub-row,
+.matchday-event-row {
+  align-items: center;
+}
+
+.matchday-correction-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, .55);
+  padding: 18px;
+}
+
+.matchday-correction-dialog {
+  width: min(100%, 360px);
+  display: grid;
+  gap: 10px;
+  background: #fff;
+  border-radius: 16px;
+  padding: 18px;
+  box-shadow: 0 16px 45px rgba(0, 0, 0, .25);
+}
+
+.matchday-correction-dialog strong {
+  margin-bottom: 4px;
+}
+
+@media (max-width: 620px) {
+  .matchday-sub-grid,
+  .matchday-event-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+  }
+
+  .matchday-tick-button {
+    grid-column: 2;
+    justify-self: end;
+  }
+
+  #matchday-player-event-text-label {
+    grid-column: 1 / -1;
+  }
+}
