@@ -1,51 +1,80 @@
-// Matchday free-text player events.
-// Extends the existing Matchday event payload without changing its Supabase schema.
+// Matchday free-text player events and completed-save retry.
+// This file extends the existing Matchday payload without changing Supabase schema.
 (() => {
-  const eventSection = document.querySelector("#matchday-live .matchday-live-section:nth-of-type(3)");
   const eventList = document.getElementById("matchday-event-list");
+  const eventSection = eventList?.closest(".matchday-live-section");
 
-  if (!eventSection || !eventList || typeof state === "undefined") return;
+  if (!eventSection || !eventList) {
+    console.error("Matchday notes: Match events section not found.");
+    return;
+  }
 
-  const card = document.createElement("div");
-  card.className = "matchday-event-card";
-  card.innerHTML = `
-    <strong>📝 Player Event</strong>
-    <div class="matchday-event-grid">
-      <label>
-        Player
-        <select id="matchday-note-player" class="matchday-select"></select>
-      </label>
-      <label style="grid-column: 1 / -1;">
-        Event
-        <textarea id="matchday-note-text" class="matchday-input" rows="3" placeholder="e.g. Fell over his own feet"></textarea>
-      </label>
-    </div>
-    <button id="matchday-add-note" class="secondary-button matchday-wide" type="button">Record Event</button>
-  `;
-
-  eventSection.insertBefore(card, eventList);
+  // Create the free-text card in a deterministic location: immediately before
+  // the recorded event list. This avoids relying on nth-of-type selectors.
+  let noteCard = document.getElementById("matchday-note-card");
+  if (!noteCard) {
+    noteCard = document.createElement("div");
+    noteCard.id = "matchday-note-card";
+    noteCard.className = "matchday-event-card";
+    noteCard.innerHTML = `
+      <strong>📝 Player Event</strong>
+      <div class="matchday-event-grid">
+        <label>
+          Player
+          <select id="matchday-note-player" class="matchday-select"></select>
+        </label>
+        <label style="grid-column: 1 / -1;">
+          Event / note
+          <textarea id="matchday-note-text" class="matchday-input" rows="3" placeholder="e.g. Fell over his own feet"></textarea>
+        </label>
+      </div>
+      <button id="matchday-add-note" class="secondary-button matchday-wide" type="button">Record Event</button>
+    `;
+    eventSection.insertBefore(noteCard, eventList);
+  }
 
   const notePlayer = document.getElementById("matchday-note-player");
   const noteText = document.getElementById("matchday-note-text");
   const addNote = document.getElementById("matchday-add-note");
 
-  function renderNotePlayers() {
-    if (typeof fillSelect !== "function") return;
-    fillSelect(notePlayer, state.squadIds || []);
+  function currentSquadIds() {
+    try {
+      return Array.isArray(state?.squadIds) ? state.squadIds : [];
+    } catch {
+      return [];
+    }
   }
 
-  const originalRenderEventControls = renderEventControls;
-  renderEventControls = function () {
-    originalRenderEventControls();
-    renderNotePlayers();
-  };
+  function renderNotePlayers() {
+    if (!notePlayer) return;
+    const previous = notePlayer.value;
+    notePlayer.innerHTML = "";
 
-  const originalRenderLists = renderLists;
-  renderLists = function () {
-    originalRenderLists();
+    currentSquadIds().forEach((id) => {
+      const option = document.createElement("option");
+      option.value = id;
+      option.textContent = typeof playerName === "function" ? playerName(id) : id;
+      notePlayer.appendChild(option);
+    });
 
+    if ([...notePlayer.options].some((option) => option.value === previous)) {
+      notePlayer.value = previous;
+    }
+  }
+
+  function renderAllEventsWithNotes() {
+    if (!eventList) return;
     eventList.innerHTML = "";
-    [...state.events].sort((a, b) => (a.minute || 0) - (b.minute || 0)).forEach((e) => {
+
+    const events = (() => {
+      try {
+        return Array.isArray(state?.events) ? [...state.events] : [];
+      } catch {
+        return [];
+      }
+    })();
+
+    events.sort((a, b) => (a.minute || 0) - (b.minute || 0)).forEach((e) => {
       const row = document.createElement("div");
       row.className = "matchday-event-row";
 
@@ -61,47 +90,70 @@
 
       eventList.appendChild(row);
     });
-  };
+  }
 
-  addNote.addEventListener("click", () => {
-    if (typeof syncLateArrivals === "function") syncLateArrivals();
+  // Hook into Matchday rendering so the player dropdown also picks up late arrivals
+  // and free-text events remain visible alongside goals/cards.
+  try {
+    const originalRenderEventControls = renderEventControls;
+    renderEventControls = function () {
+      originalRenderEventControls();
+      renderNotePlayers();
+    };
 
-    const playerId = notePlayer.value;
-    const text = noteText.value.trim();
+    const originalRenderLists = renderLists;
+    renderLists = function () {
+      originalRenderLists();
+      renderAllEventsWithNotes();
+    };
+  } catch (error) {
+    console.error("Matchday notes: could not hook Matchday render functions", error);
+  }
 
-    if (!playerId) {
-      window.alert("Choose the player for this event.");
-      return;
+  addNote?.addEventListener("click", () => {
+    try {
+      if (typeof syncLateArrivals === "function") syncLateArrivals();
+
+      const playerId = notePlayer?.value || "";
+      const text = noteText?.value.trim() || "";
+
+      if (!playerId) {
+        window.alert("Choose the player for this event.");
+        return;
+      }
+
+      if (!text) {
+        window.alert("Enter the event text first.");
+        noteText?.focus();
+        return;
+      }
+
+      state.events.push({
+        type: "Note",
+        playerId,
+        minute: typeof matchMinute === "function" ? matchMinute() : 0,
+        text
+      });
+
+      saveState();
+      noteText.value = "";
+      renderLive();
+    } catch (error) {
+      console.error("Matchday notes: could not record event", error);
+      window.alert("Could not record this event. Please try again.");
     }
-
-    if (!text) {
-      window.alert("Enter the event text first.");
-      noteText.focus();
-      return;
-    }
-
-    state.events.push({
-      type: "Note",
-      playerId,
-      minute: typeof matchMinute === "function" ? matchMinute() : 0,
-      text
-    });
-
-    saveState();
-    noteText.value = "";
-    renderLive();
   });
 
   renderNotePlayers();
+  renderAllEventsWithNotes();
 })();
 
 // A completed Matchday must be recoverable if the manager has poor signal at
-// Full Time. The session already remains in localStorage; this adds an obvious
-// retry action so it can still reach Supabase later and therefore Excel.
+// Full Time. The session remains in localStorage; this adds an obvious retry.
 (() => {
   const resetButton = document.getElementById("matchday-reset");
   const saveStatus = document.getElementById("matchday-save-status");
-  if (!resetButton || !saveStatus || typeof state === "undefined") return;
+  if (!resetButton || !saveStatus) return;
 
   const retryButton = document.createElement("button");
   retryButton.id = "matchday-retry-save";
@@ -111,17 +163,25 @@
   resetButton.parentNode.insertBefore(retryButton, resetButton);
 
   function updateRetryVisibility() {
-    retryButton.classList.toggle("hidden", state.status !== "finished" || Boolean(state.supabaseId));
+    try {
+      retryButton.classList.toggle("hidden", state.status !== "finished" || Boolean(state.supabaseId));
+    } catch {
+      retryButton.classList.add("hidden");
+    }
   }
 
-  const originalRenderFinished = renderFinished;
-  renderFinished = function () {
-    originalRenderFinished();
-    updateRetryVisibility();
-    if (state.status === "finished" && !state.supabaseId) {
-      saveStatus.textContent = "Not yet saved centrally. Retry when you have a data connection.";
-    }
-  };
+  try {
+    const originalRenderFinished = renderFinished;
+    renderFinished = function () {
+      originalRenderFinished();
+      updateRetryVisibility();
+      if (state.status === "finished" && !state.supabaseId) {
+        saveStatus.textContent = "Not yet saved centrally. Retry when you have a data connection.";
+      }
+    };
+  } catch (error) {
+    console.error("Matchday retry: could not hook finished render", error);
+  }
 
   retryButton.addEventListener("click", async () => {
     if (state.status !== "finished" || state.supabaseId) return;
