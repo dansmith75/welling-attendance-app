@@ -32,3 +32,10 @@ window.WELLING_APP_CONFIG = {
     return nativeFetch(input, init);
   };
 })();
+
+// The old manual Excel CSV workflow is retired. Attendance / Matchday data is
+// now reconciled from Supabase into Excel by UPDATE-WELLING. Remove the legacy
+// control after app.js has initialised so its old listener cannot affect startup.
+window.addEventListener("load", () => {
+  document.getElementById("export-excel-csv")?.remove();
+});
