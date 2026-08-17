@@ -1,86 +1,81 @@
-# Welling United Red Attendance App v2.5
+# Welling United Red Attendance App
 
-Mobile-first attendance capture app for Welling United Red OBDSFL.
+Mobile-first Attendance and Matchday capture for Welling United Red OBDSFL.
 
-## v2.5
+## Current data flow
 
-Adds an admin-only Excel-ready CSV export from Supabase.
+The app writes Attendance and completed Matchday data to Supabase so any authorised manager can run the session from their own phone.
 
-The CSV is a flat table designed to be imported into the Excel workbook as an `AttendanceRecords` table.
+The master Excel workbook remains the football-data source of truth.
 
-Columns exported:
+Normal workflow:
 
-- RecordKey
-- SessionKey
-- SessionId
-- SessionDate
-- SessionType
-- Venue
-- PlayerId
-- DisplayName
-- Status
-- FeePaid
-- PaymentStatus
-- LatePayment
-- SubmittedBy
-- SubmittedAt
-- Source
+1. Manager records Attendance and/or Matchday in the app.
+2. The app submits the data centrally to Supabase.
+3. `UPDATE-WELLING` runs `sync_supabase_to_excel.py` and imports only new Supabase submissions into Excel.
+4. Excel is saved.
+5. The Dashboard JSON files are regenerated from Excel.
+6. The changed JSON is published to GitHub.
+7. Dashboard, Attendance and Matchday continue to use the shared squad and fixture feeds.
 
-Excel remains the editable source of truth after import. Supabase remains the pitch-side capture database.
+There is no manual Excel CSV export/import step in the normal workflow.
 
-## Notes
+## Attendance
 
-Keep your existing `supabase-config.js` when upgrading so your real Supabase URL, key and admin PIN are preserved.
+- Training statuses: Present, Late, Absent, Injured.
+- Match statuses: Present, Late, No Show, Unavailable, Injured, Rotated.
+- Match squad is limited to 16 players marked Present or Late.
+- Unavailable, Injured and Rotated players move to the bottom of the list.
+- Active players and `displayName` come from the shared Dashboard `players.json` feed.
+- Submitted Attendance is stored centrally in Supabase.
+- Recent submitted sessions can be reviewed from the app.
 
+## Matchday v3
 
-## v3
-- Payment tracking removed; the fixed monthly fee is managed in Excel.
-- Player list contains active players only.
-- User-facing player names use `displayName`; IDs are internal only.
-- Run `RESET-TEST-DATA.sql` once in Supabase to clear test sessions.
+- Matchday squad is automatic from players marked Present or Late on Match Attendance.
+- Starting lineup is selected by tapping player cards; maximum 11, with fewer allowed after confirmation.
+- A player changed to Late after kick-off can join the live Matchday squad, up to the 16-player squad limit.
+- Players on pitch are shown together but clustered by position group: goalkeeper, defence, midfield, attack.
+- Start, Pause / Half Time, Resume and Full Time match clock.
+- Pause / Half Time uses the orange treatment; Full Time is green; Cancel Matchday is isolated at the bottom.
+- Substitutions record player off, player on and minute, with minutes played recalculated from substitution history.
+- Recorded substitutions and events use the spanner control for Edit / Delete / Cancel.
+- Match events support goals, own goals, yellow cards, red cards, sin bins and free-text player events.
+- Goal types support Open Play, Penalty, Free Kick and Corner.
+- Open Play, Free Kick and Corner can record an assist; Penalty does not.
+- Own Goal is recorded without attributing the goal to one of our players.
+- Live Matchday state is stored locally for immediate recovery and periodically backed up to Supabase.
+- A safety stop protects forgotten running matches at 180 minutes.
+- Completed Matchdays are stored centrally in Supabase `matchday_sessions`.
 
+## Supabase to Excel
 
-## Matchday Mode v1
-- Fixture selection from `matches.json`.
-- Squad selection (max 16) and Starting XI (exactly 11).
-- Start/pause/resume/full-time match clock.
-- Substitution tracking with editable minute entry and rolling substitutions supported.
-- Automatic minutes played calculation.
-- Finished Matchday saved to Supabase `matchday_sessions` with JSON backup on failure.
-- Run `MATCHDAY-V1-SCHEMA.sql` once before first use.
+`UPDATE-WELLING` pulls central submissions back into Excel automatically.
 
+Attendance records are appended only when their generated record key has not already been imported.
 
-## Matchday v1.2 UI changes
-- Matchday now uses the same red header / white card visual language as Attendance.
-- Attendance status buttons are neutral until selected; selected status supplies the colour.
-- Manual Home/Away selection removed from Attendance. Matchday works from the selected fixture.
-- Matchday launch button moved into the Session Type card under Training/Match.
+Completed Matchdays are imported once by Supabase session ID. The Matchday audit table retains starters, substitutions, minutes, goals, assists, cards and notes while the existing Goals, Assists and Events sheets are updated where applicable.
 
+This means the phone used to run the session is not part of the long-term data chain once the Supabase submission succeeds.
 
-## Matchday v1.3
-- Matchday button sits directly below Session Type and appears only when Match is selected.
-- Starting XI chooser only shows players selected in the Matchday squad.
+## Shared data
 
+`app-config.js` points Attendance / Matchday at the Dashboard-published:
 
-## Matchday v1.4
-- Matchday squad is automatic from the current Match attendance screen.
-- `Present` and `Late` players are included in the squad; all other statuses are excluded.
-- Matchday only asks for the starting lineup.
-- Eleven starters is the normal target, but fewer starters are allowed after a confirmation warning.
-- Fixture loading supports a shared Dashboard `matches.json` URL through `app-config.js`, with local `matches.json` fallback.
+- `data/players.json`
+- `data/matches.json`
 
+Excel remains the editable squad / fixture source. The Dashboard exporter publishes those changes for both sites.
 
-## Matchday v1.5
-- Match attendance is limited to 16 players marked Present/Late.
-- Players marked Unavailable, Injured or Rotated move to the bottom of the Attendance list.
-- A player changed to Late after kick-off is automatically added to the live Matchday squad/bench.
-- Matchday can record goals with scorer and Open Play/Penalty type.
-- Matchday can record Yellow, Red and Sin Bin events.
-- Match events are stored inside the existing Matchday Supabase JSON payload.
+## Setup notes
 
+Keep the existing `supabase-config.js` when upgrading so the real Supabase URL, publishable key and admin PIN are preserved.
 
-## Matchday v1.6
-- Open Play goals now have an optional Assist dropdown.
-- Assist options come from the current Matchday squad and exclude the scorer.
-- Selecting Penalty hides and clears the Assist field.
-- Goal events store `goalType`, scorer, minute and `assistPlayerId` when applicable.
+The Supabase project uses:
+
+- `attendance_sessions`
+- `attendance_records`
+- `matchday_sessions`
+- `matchday_recovery`
+
+The Matchday recovery table is created by `MATCHDAY-RESILIENCE.sql`.
