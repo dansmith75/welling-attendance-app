@@ -1,7 +1,11 @@
 // Legacy compatibility file.
-// Matchday v3 now lives entirely in matchday.js.
-// Keep only the first-page user toggle behaviour here until index.html is tidied.
+// Matchday v3 logic now lives entirely in matchday.js.
 (() => {
+  const css = document.createElement("link");
+  css.rel = "stylesheet";
+  css.href = "matchday-v3.css";
+  document.head.appendChild(css);
+
   const container = document.getElementById("user-options");
   if (!container) return;
 
