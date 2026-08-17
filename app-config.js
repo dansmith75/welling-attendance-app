@@ -79,6 +79,11 @@ window.addEventListener("load", () => {
       ui.onload = () => {
         const finalUi = document.createElement("script");
         finalUi.src = "matchday-ui-final.js";
+        finalUi.onload = () => {
+          const hotfix = document.createElement("script");
+          hotfix.src = "matchday-hotfix.js";
+          document.body.appendChild(hotfix);
+        };
         document.body.appendChild(finalUi);
       };
       document.body.appendChild(ui);
