@@ -1,0 +1,133 @@
+:root {
+  --primary: #c8102e;
+  --primary-dark: #9f0d25;
+  --bg: #f4f5f7;
+  --card: #ffffff;
+  --text: #1f2937;
+  --muted: #6b7280;
+  --border: #d9dde5;
+  --success: #16a34a;
+  --success-dark: #166534;
+  --warning: #d97706;
+  --danger: #b91c1c;
+  --blue: #2563eb;
+  --purple: #7c3aed;
+  --shadow: 0 8px 24px rgba(17, 24, 39, 0.08);
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; font-family: Arial, Helvetica, sans-serif; background: var(--bg); color: var(--text); }
+button, input, select { font: inherit; }
+button { cursor: pointer; }
+.hidden { display: none !important; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+.app-header {
+  display: flex; align-items: center; gap: 14px; padding: 18px 16px;
+  background: var(--primary); color: white;
+}
+.club-logo { width: 74px; height: 74px; object-fit: contain; border-radius: 50%; background: white; padding: 5px; }
+.header-text h1 { margin: 2px 0 5px; }
+.eyebrow { margin: 0; font-size: 0.76rem; font-weight: 900; text-transform: uppercase; letter-spacing: .06em; opacity: .9; }
+.eyebrow.dark { color: var(--muted); }
+.current-user-line { display: flex; gap: 8px; align-items: center; font-size: .86rem; }
+.link-button { border: 0; background: transparent; color: inherit; text-decoration: underline; padding: 0; }
+
+.app-shell { width: min(100%, 760px); margin: 0 auto; padding: 16px; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); padding: 16px; }
+.card h2 { margin: 0 0 12px; }
+.radio-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; border: 0; padding: 0; margin: 0; }
+.radio-card { position: relative; display: grid; place-items: center; min-height: 48px; border: 1px solid var(--border); border-radius: 12px; font-weight: 900; background: white; }
+.radio-card input { position: absolute; opacity: 0; }
+.radio-card:has(input:checked) { border-color: var(--primary); color: var(--primary); background: rgba(200,16,46,.07); }
+
+.matchday-launch { width: 100%; margin-top: 14px; border: 0; border-radius: 12px; padding: 14px; background: var(--primary); color: white; font-weight: 900; }
+.summary-bar { display: flex; justify-content: space-between; gap: 8px; margin: 14px 0; padding: 10px 12px; border-radius: 12px; background: #111827; color: white; font-size: .82rem; font-weight: 800; }
+.player-list { display: grid; gap: 10px; }
+.player-card { background: white; border: 1px solid var(--border); border-radius: 14px; padding: 12px; box-shadow: 0 3px 12px rgba(17,24,39,.05); }
+.player-name { margin-bottom: 9px; font-weight: 950; }
+.status-buttons { display: grid; grid-template-columns: repeat(var(--button-count), minmax(0, 1fr)); gap: 6px; }
+.status-button { min-height: 40px; border: 1px solid var(--border); border-radius: 9px; padding: 7px 4px; background: transparent; color: var(--text); font-size: .77rem; font-weight: 800; }
+.status-button:hover { background: rgba(0,0,0,.03); }
+.status-present.selected { background: var(--success); border-color: var(--success); color: white; }
+.status-late.selected { background: var(--warning); border-color: var(--warning); color: white; }
+.status-absent.selected, .status-no-show.selected { background: var(--danger); border-color: var(--danger); color: white; }
+.status-unavailable.selected { background: #64748b; border-color: #64748b; color: white; }
+.status-injured.selected { background: var(--blue); border-color: var(--blue); color: white; }
+.status-rotated.selected { background: var(--purple); border-color: var(--purple); color: white; }
+
+.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+.primary-button, .secondary-button, .danger-button, .small-button { border-radius: 11px; padding: 12px; font-weight: 900; }
+.primary-button { border: 0; background: var(--primary); color: white; }
+.secondary-button { border: 1px solid var(--border); background: white; color: var(--text); }
+.danger-button { border: 0; background: var(--danger); color: white; }
+.small-button { border: 1px solid var(--border); background: white; padding: 8px 10px; }
+.admin-tools { display: flex; gap: 8px; margin-top: 10px; }
+
+.user-overlay, .success-overlay, .sessions-overlay, .matchday-overlay {
+  position: fixed; inset: 0; z-index: 1200; overflow-y: auto; background: rgba(0,0,0,.72); padding: 16px;
+}
+.user-card, .success-card, .sessions-card { width: min(100%, 650px); margin: 5vh auto; background: white; border-radius: 18px; padding: 18px; box-shadow: var(--shadow); }
+.user-logo { display: block; width: 90px; margin: 0 auto 12px; }
+.user-options { display: grid; gap: 8px; margin-top: 14px; }
+.user-option { border: 1px solid var(--border); border-radius: 11px; padding: 12px; background: white; font-weight: 900; }
+.user-option.selected-user, .user-option.admin-user { border-color: var(--primary); }
+.success-card { text-align: center; }
+.success-icon { display: grid; place-items: center; width: 58px; height: 58px; margin: 0 auto 10px; border-radius: 50%; background: #dcfce7; color: var(--success-dark); font-size: 2rem; font-weight: 950; }
+.sessions-header { display: flex; justify-content: space-between; align-items: center; }
+.sessions-list { display: grid; gap: 8px; margin-top: 12px; }
+.session-item { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.session-row { display: grid; width: 100%; border: 0; padding: 11px; text-align: left; background: white; }
+.session-row-title { font-weight: 900; }
+.session-row-meta, .sessions-status, .detail-summary { color: var(--muted); font-size: .82rem; }
+.session-details.inline { padding: 10px; border-top: 1px solid var(--border); }
+.record-list { display: grid; gap: 6px; }
+.record-row { display: flex; justify-content: space-between; gap: 8px; padding: 7px 0; border-bottom: 1px solid #eef0f3; }
+.record-status { font-weight: 800; }
+
+.matchday-overlay { padding: 0; background: var(--bg); }
+.matchday-card { width: min(100%, 760px); min-height: 100vh; margin: 0 auto; padding: 0 16px 24px; }
+.matchday-header { display: flex; align-items: center; justify-content: space-between; margin: 0 -16px 16px; padding: 18px 16px; background: var(--primary); color: white; }
+.matchday-header h2 { margin: 2px 0 0; }
+#matchday-setup, #matchday-live, #matchday-finished { background: white; border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); padding: 16px; }
+.matchday-label, .matchday-sub-grid label, .matchday-event-grid label { display: grid; gap: 6px; font-weight: 900; }
+.matchday-select, .matchday-input { width: 100%; border: 1px solid var(--border); border-radius: 11px; padding: 11px; background: white; color: var(--text); }
+.matchday-help { color: var(--muted); font-size: .82rem; font-weight: 700; }
+.matchday-auto-squad { display: flex; justify-content: space-between; gap: 8px; margin-top: 14px; border: 1px solid var(--border); border-radius: 11px; padding: 11px; background: rgba(200,16,46,.04); }
+.matchday-section-title { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 16px 0 8px; font-size: .82rem; color: var(--muted); }
+.matchday-section-title div { display: flex; gap: 8px; }
+.matchday-player-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; }
+.matchday-player-choice { display: flex; gap: 8px; align-items: center; border: 1px solid var(--border); border-radius: 11px; padding: 10px; font-weight: 900; }
+.matchday-player-choice.selected { border-color: var(--primary); background: rgba(200,16,46,.07); }
+.matchday-wide { width: 100%; margin-top: 12px; }
+.matchday-scoreboard { margin-bottom: 12px; border-radius: 14px; padding: 16px; background: var(--primary); color: white; text-align: center; }
+.matchday-live-fixture { font-weight: 900; }
+.matchday-clock { margin: 7px 0 2px; font-size: clamp(2.6rem, 12vw, 4.4rem); font-weight: 950; font-variant-numeric: tabular-nums; letter-spacing: -.05em; }
+.matchday-clock-state { font-size: .78rem; font-weight: 900; text-transform: uppercase; opacity: .8; }
+.matchday-live-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.matchday-live-actions button { flex: 1; }
+#matchday-cancel { flex-basis: 100%; }
+.matchday-live-section { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+.matchday-sub-grid { display: grid; grid-template-columns: 1fr 1fr 90px; gap: 8px; }
+.matchday-event-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 90px; gap: 8px; }
+.matchday-event-card { margin-top: 10px; border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
+.matchday-event-card > strong { display: block; margin-bottom: 9px; }
+.matchday-sub-list, .matchday-event-list, .matchday-minutes-list { display: grid; gap: 7px; margin-top: 10px; }
+.matchday-sub-row, .matchday-event-row, .matchday-minute-row { display: flex; justify-content: space-between; gap: 10px; padding: 9px 10px; border-radius: 9px; background: #f3f4f6; font-size: .82rem; font-weight: 800; }
+
+.matchday-lineup { display: grid; gap: 10px; }
+.matchday-position-group { border: 1px solid var(--border); border-radius: 12px; padding: 10px; }
+.matchday-position-heading { margin-bottom: 7px; color: var(--muted); font-size: .76rem; font-weight: 950; text-transform: uppercase; letter-spacing: .05em; }
+.matchday-position-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.matchday-lineup-chip { display: inline-block; border: 1px solid var(--border); border-radius: 999px; padding: 7px 10px; font-size: .82rem; font-weight: 900; }
+.matchday-lineup-chip.position-defence { background: #fee2e2; border-color: #fecaca; color: #991b1b; }
+.matchday-lineup-chip.position-midfield { background: #dbeafe; border-color: #bfdbfe; color: #1e40af; }
+.matchday-lineup-chip.position-attack { background: #dcfce7; border-color: #bbf7d0; color: #166534; }
+.matchday-lineup-chip.position-goalkeeper, .matchday-lineup-chip.position-other { background: #f3f4f6; border-color: #e5e7eb; color: #374151; }
+
+@media (max-width: 620px) {
+  .status-buttons { grid-template-columns: repeat(3, minmax(0,1fr)); }
+  .matchday-player-grid { grid-template-columns: 1fr; }
+  .matchday-sub-grid, .matchday-event-grid { grid-template-columns: 1fr; }
+  .radio-options { grid-template-columns: 1fr 1fr; }
+}
