@@ -13,8 +13,6 @@ const APP_USERS = [
 
 const playerListElement = document.getElementById("player-list");
 const sessionTypeElements = document.querySelectorAll('input[name="session-type"]');
-const matchVenueElements = document.querySelectorAll('input[name="match-venue"]');
-const matchVenueOptionsElement = document.getElementById("match-venue-options");
 const exportButton = document.getElementById("export-json");
 const clearButton = document.getElementById("clear-session");
 const summaryTotalElement = document.getElementById("summary-total");
@@ -170,16 +168,11 @@ function getSelectedSessionType() {
 }
 
 function getSelectedMatchVenue() {
-  const checkedMatchVenue = document.querySelector('input[name="match-venue"]:checked');
-  return checkedMatchVenue ? checkedMatchVenue.value : "Home";
+  return null;
 }
 
 function isMatch() {
   return getSelectedSessionType() === "Match";
-}
-
-function isHomeMatch() {
-  return getSelectedSessionType() === "Match" && getSelectedMatchVenue() === "Home";
 }
 
 function setSelectedSessionType(sessionType) {
@@ -188,16 +181,6 @@ function setSelectedSessionType(sessionType) {
   });
 }
 
-function setSelectedMatchVenue(matchVenue) {
-  matchVenueElements.forEach((element) => {
-    element.checked = element.value === matchVenue;
-  });
-}
-
-function updateMatchVenueVisibility() {
-  const isMatch = getSelectedSessionType() === "Match";
-  matchVenueOptionsElement.classList.toggle("hidden", !isMatch);
-}
 
 function loadSavedSession() {
   const saved = localStorage.getItem(STORAGE_KEY);
@@ -205,7 +188,6 @@ function loadSavedSession() {
   if (!saved) {
     return {
       type: "Training",
-      venue: "Home",
       attendance: {}
     };
   }
@@ -216,7 +198,6 @@ function loadSavedSession() {
 function saveSession() {
   const session = {
     type: getSelectedSessionType(),
-    venue: getSelectedMatchVenue(),
     attendance
   };
 
@@ -225,6 +206,21 @@ function saveSession() {
 
 
 function setPlayerStatus(playerId, status) {
+  if (isMatch() && (status === "Present" || status === "Late")) {
+    const currentStatus = getPlayerStatusForCurrentSession(playerId);
+    const alreadyInSquad = currentStatus === "Present" || currentStatus === "Late";
+
+    const currentSquadSize = players.filter((player) => {
+      const playerStatus = getPlayerStatusForCurrentSession(player.id);
+      return playerStatus === "Present" || playerStatus === "Late";
+    }).length;
+
+    if (!alreadyInSquad && currentSquadSize >= 16) {
+      window.alert("Match squad is limited to 16 players marked Present or Late.");
+      return;
+    }
+  }
+
   attendance[playerId] = status;
   saveSession();
   renderPlayers();
@@ -254,7 +250,17 @@ function getPlayerStatusForCurrentSession(playerId) {
 function renderPlayers() {
   playerListElement.innerHTML = "";
 
-  players.forEach((player) => {
+  const bottomStatuses = new Set(["Unavailable", "Injured", "Rotated"]);
+  const orderedPlayers = players
+    .map((player, index) => ({ player, index }))
+    .sort((a, b) => {
+      const aBottom = bottomStatuses.has(getPlayerStatusForCurrentSession(a.player.id)) ? 1 : 0;
+      const bBottom = bottomStatuses.has(getPlayerStatusForCurrentSession(b.player.id)) ? 1 : 0;
+      return aBottom - bBottom || a.index - b.index;
+    })
+    .map((item) => item.player);
+
+  orderedPlayers.forEach((player) => {
     const card = document.createElement("article");
     card.className = "player-card";
 
@@ -314,7 +320,7 @@ function buildExportData() {
     session: {
       date: exportDate,
       type: sessionType,
-      venue: sessionType === "Match" ? matchVenue : null,
+      venue: null,
       submittedBy: getCurrentUserName()
     },
     attendance: players.map((player) => ({
@@ -846,9 +852,7 @@ async function init() {
   const savedSession = loadSavedSession();
 
   setSelectedSessionType(savedSession.type || "Training");
-  setSelectedMatchVenue(savedSession.venue || "Home");
   attendance = savedSession.attendance || {};
-  updateMatchVenueVisibility();
 
   const response = await fetch("players.json");
   const loadedPlayers = await response.json();
@@ -865,18 +869,11 @@ async function init() {
 
   sessionTypeElements.forEach((element) => {
     element.addEventListener("change", () => {
-      updateMatchVenueVisibility();
-      saveSession();
+          saveSession();
       renderPlayers();
     });
   });
 
-  matchVenueElements.forEach((element) => {
-    element.addEventListener("change", () => {
-      saveSession();
-      renderPlayers();
-    });
-  });
 
   exportButton.addEventListener("click", () => submitAttendance());
   successOkButton.addEventListener("click", hideSuccessMessage);

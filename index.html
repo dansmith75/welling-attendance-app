@@ -37,19 +37,7 @@
         </label>
       </fieldset>
 
-      <fieldset id="match-venue-options" class="radio-options venue-options hidden">
-        <legend>Match venue</legend>
-
-        <label class="radio-card">
-          <input type="radio" name="match-venue" value="Home" checked />
-          <span>Home</span>
-        </label>
-
-        <label class="radio-card">
-          <input type="radio" name="match-venue" value="Away" />
-          <span>Away</span>
-        </label>
-      </fieldset>
+      <button id="open-matchday" class="matchday-launch hidden" type="button">⚽ Matchday</button>
     </section>
 
     <section class="summary-bar" aria-live="polite">
@@ -67,7 +55,6 @@
       <button id="clear-session" class="danger-button">Clear</button>
       <button id="view-sessions" class="secondary-button" type="button">Recent</button>
       <button id="admin-unlock" class="secondary-button" type="button">Admin</button>
-      <button id="open-matchday" class="matchday-launch hidden" type="button">⚽ Matchday</button>
     </section>
 
     <section id="admin-tools" class="admin-tools hidden" aria-label="Admin tools">
@@ -127,22 +114,18 @@
         <label class="matchday-label" for="matchday-fixture">Fixture</label>
         <select id="matchday-fixture" class="matchday-select"></select>
         <p id="matchday-fixture-meta" class="matchday-help"></p>
-
-        <div class="matchday-section-title">
-          <div>
-            <strong>Squad</strong>
-            <span id="matchday-squad-count">0 / 16</span>
-          </div>
-          <span>Select up to 16</span>
+<div class="matchday-auto-squad">
+          <strong>Match squad</strong>
+          <span id="matchday-auto-squad-count">0 players from Attendance</span>
         </div>
-        <div id="matchday-squad-list" class="matchday-player-grid"></div>
+        <p class="matchday-help">Players marked Present or Late on the Match attendance screen are included automatically.</p>
 
         <div class="matchday-section-title">
           <div>
-            <strong>Starting XI</strong>
-            <span id="matchday-starter-count">0 / 11</span>
+            <strong>Starting lineup</strong>
+            <span id="matchday-starter-count">0 selected</span>
           </div>
-          <span>Choose exactly 11</span>
+          <span>11 normally · fewer allowed</span>
         </div>
         <div id="matchday-starter-list" class="matchday-player-grid"></div>
 
@@ -186,6 +169,64 @@
           <div id="matchday-sub-list" class="matchday-sub-list"></div>
         </section>
 
+
+        <section class="matchday-live-section">
+          <h3>Match events</h3>
+
+          <div class="matchday-event-card">
+            <strong>⚽ Goal</strong>
+            <div class="matchday-event-grid">
+              <label>
+                Scorer
+                <select id="matchday-goal-player" class="matchday-select"></select>
+              </label>
+              <label>
+                Goal type
+                <select id="matchday-goal-type" class="matchday-select">
+                  <option value="Open Play">Open Play</option>
+                  <option value="Penalty">Penalty</option>
+                </select>
+              </label>
+              <label id="matchday-assist-label">
+                Assist
+                <select id="matchday-goal-assist" class="matchday-select">
+                  <option value="">No assist / unknown</option>
+                </select>
+              </label>
+              <label>
+                Minute
+                <input id="matchday-goal-minute" class="matchday-input" type="number" min="0" step="1" />
+              </label>
+            </div>
+            <button id="matchday-add-goal" class="secondary-button matchday-wide" type="button">Record Goal</button>
+          </div>
+
+          <div class="matchday-event-card">
+            <strong>Card / Sin Bin</strong>
+            <div class="matchday-event-grid">
+              <label>
+                Player
+                <select id="matchday-card-player" class="matchday-select"></select>
+              </label>
+              <label>
+                Type
+                <select id="matchday-card-type" class="matchday-select">
+                  <option value="Yellow">Yellow</option>
+                  <option value="Red">Red</option>
+                  <option value="Sin Bin">Sin Bin</option>
+                </select>
+              </label>
+              <label>
+                Minute
+                <input id="matchday-card-minute" class="matchday-input" type="number" min="0" step="1" />
+              </label>
+            </div>
+            <button id="matchday-add-card" class="secondary-button matchday-wide" type="button">Record Card</button>
+          </div>
+
+          <div id="matchday-event-list" class="matchday-event-list"></div>
+        </section>
+
         <button id="matchday-fulltime" class="danger-button matchday-wide" type="button">Full Time</button>
       </div>
 
@@ -205,6 +246,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
+  <script src="app-config.js"></script>
   <script src="app.js"></script>
   <script src="matchday.js"></script>
 </body>
