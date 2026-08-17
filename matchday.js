@@ -1,5 +1,7 @@
-const MATCHDAY_STORAGE_KEY = "welling-red-matchday-v1";
+const MATCHDAY_STORAGE_KEY = "welling-red-matchday-v3";
 const MATCHDAY_STARTERS = 11;
+const MATCHDAY_AUTOSAVE_MS = 3 * 60 * 1000;
+const MATCHDAY_SAFETY_SECONDS = 180 * 60;
 
 const md = {
   open: document.getElementById("open-matchday"),
@@ -31,11 +33,11 @@ const md = {
   assistLabel: document.getElementById("matchday-assist-label"),
   goalMinute: document.getElementById("matchday-goal-minute"),
   addGoal: document.getElementById("matchday-add-goal"),
-  cardPlayer: document.getElementById("matchday-card-player"),
-  cardType: document.getElementById("matchday-card-type"),
-  cardMinute: document.getElementById("matchday-card-minute"),
-  addCard: document.getElementById("matchday-add-card"),
-  eventList: document.getElementById("matchday-event-list"),
+  eventPlayer: document.getElementById("matchday-card-player"),
+  eventType: document.getElementById("matchday-card-type"),
+  eventMinute: document.getElementById("matchday-card-minute"),
+  addEvent: document.getElementById("matchday-add-card"),
+  legacyEventList: document.getElementById("matchday-event-list"),
   fullTime: document.getElementById("matchday-fulltime"),
   finishedFixture: document.getElementById("matchday-finished-fixture"),
   finishedClock: document.getElementById("matchday-finished-clock"),
@@ -47,8 +49,10 @@ const md = {
 let matchdayFixtures = [];
 let matchdayPlayers = [];
 let timerHandle = null;
+let autosaveHandle = null;
+let autosaveBusy = false;
 
-function emptyState() {
+function emptyMatchdayState() {
   return {
     fixtureId: null,
     squadIds: [],
@@ -63,20 +67,22 @@ function emptyState() {
     startedAt: null,
     finishedAt: null,
     submittedBy: null,
-    supabaseId: null
+    supabaseId: null,
+    recoveryId: null,
+    safetyStopTriggered: false
   };
 }
 
-function loadState() {
+function loadMatchdayState() {
   try {
-    const saved = localStorage.getItem(MATCHDAY_STORAGE_KEY);
-    return saved ? { ...emptyState(), ...JSON.parse(saved) } : emptyState();
+    const raw = localStorage.getItem(MATCHDAY_STORAGE_KEY);
+    return raw ? { ...emptyMatchdayState(), ...JSON.parse(raw) } : emptyMatchdayState();
   } catch {
-    return emptyState();
+    return emptyMatchdayState();
   }
 }
 
-let state = loadState();
+let state = loadMatchdayState();
 const saveState = () => localStorage.setItem(MATCHDAY_STORAGE_KEY, JSON.stringify(state));
 const player = id => matchdayPlayers.find(p => p.id === id);
 const playerName = id => player(id)?.displayName || id;
@@ -86,49 +92,43 @@ const fixture = () => matchdayFixtures.find(f => f.id === state.fixtureId) || nu
 function positionGroup(pos) {
   const p = String(pos || "").toUpperCase();
   if (p === "GK") return "Goalkeeper";
-  if (["CB","LB","RB","LWB","RWB","DF","DEF"].includes(p)) return "Defence";
-  if (["CDM","DM","CM","CAM","AM","LM","RM","MF","MID"].includes(p)) return "Midfield";
-  if (["LW","RW","CF","ST","FW","FWD"].includes(p)) return "Attack";
+  if (["CB", "LB", "RB", "LWB", "RWB", "DF", "DEF"].includes(p)) return "Defence";
+  if (["CDM", "DM", "CM", "CAM", "AM", "LM", "RM", "MF", "MID"].includes(p)) return "Midfield";
+  if (["LW", "RW", "CF", "ST", "FW", "FWD"].includes(p)) return "Attack";
   return "Other";
 }
 
-function labelFixture(f) {
-  return `${f.date} · ${f.opposition}${f.competition ? ` · ${f.competition}` : ""}`;
-}
-
 function elapsedSeconds() {
-  let value = Number(state.accumulatedSeconds || 0);
+  let seconds = Number(state.accumulatedSeconds || 0);
   if (state.status === "running" && state.lastResumeEpoch) {
-    value += (Date.now() - state.lastResumeEpoch) / 1000;
+    seconds += (Date.now() - state.lastResumeEpoch) / 1000;
   }
-  return Math.max(0, value);
+  return Math.max(0, seconds);
 }
 
 const matchMinute = () => Math.floor(elapsedSeconds() / 60);
 function formatClock(seconds) {
+  if (Number(seconds || 0) > MATCHDAY_SAFETY_SECONDS) return "180:00+";
   const total = Math.max(0, Math.floor(seconds));
-  return `${String(Math.floor(total / 60)).padStart(2,"0")}:${String(total % 60).padStart(2,"0")}`;
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
 }
 
 function attendanceSquadIds() {
   if (typeof players === "undefined" || typeof getPlayerStatusForCurrentSession !== "function") return [];
-  return players
-    .filter(p => ["Present","Late"].includes(getPlayerStatusForCurrentSession(p.id)))
-    .map(p => p.id);
+  return players.filter(p => ["Present", "Late"].includes(getPlayerStatusForCurrentSession(p.id))).map(p => p.id);
 }
 
 function syncSetupSquad() {
-  const ids = attendanceSquadIds();
-  state.squadIds = ids;
-  state.starterIds = state.starterIds.filter(id => ids.includes(id));
+  state.squadIds = attendanceSquadIds();
+  state.starterIds = state.starterIds.filter(id => state.squadIds.includes(id));
   saveState();
 }
 
 function syncLateArrivals() {
-  if (!["running","paused"].includes(state.status)) return;
+  if (!["running", "paused"].includes(state.status)) return;
   let changed = false;
   attendanceSquadIds().forEach(id => {
-    if (!state.squadIds.includes(id)) {
+    if (!state.squadIds.includes(id) && state.squadIds.length < 16) {
       state.squadIds.push(id);
       changed = true;
     }
@@ -136,9 +136,111 @@ function syncLateArrivals() {
   if (changed) saveState();
 }
 
+function labelFixture(f) {
+  return `${f.date} · ${f.opposition}${f.competition ? ` · ${f.competition}` : ""}`;
+}
+
 function updateLaunch() {
   const selected = document.querySelector('input[name="session-type"]:checked');
-  md.open.classList.toggle("hidden", !(selected && selected.value === "Match"));
+  md.open?.classList.toggle("hidden", !(selected && selected.value === "Match"));
+}
+
+function fillSelect(select, ids, blankText = null) {
+  if (!select) return;
+  const previous = select.value;
+  select.innerHTML = "";
+  if (blankText !== null) {
+    const blank = document.createElement("option");
+    blank.value = "";
+    blank.textContent = blankText;
+    select.appendChild(blank);
+  }
+  ids.forEach(id => {
+    const option = document.createElement("option");
+    option.value = id;
+    option.textContent = playerName(id);
+    select.appendChild(option);
+  });
+  if ([...select.options].some(o => o.value === previous)) select.value = previous;
+}
+
+function buildV3Ui() {
+  md.open.textContent = "Matchday";
+  md.pause.classList.add("matchday-halftime-button");
+  md.fullTime.className = "matchday-fulltime-button matchday-wide";
+
+  const subSection = md.subList.closest(".matchday-live-section");
+  const eventSection = md.legacyEventList.closest(".matchday-live-section");
+  subSection?.querySelector("h3")?.classList.add("matchday-divider-title");
+  eventSection?.querySelector("h3")?.classList.add("matchday-divider-title");
+  md.lineup.closest(".matchday-live-section")?.querySelector("h3")?.classList.add("matchday-divider-title");
+
+  const goalCard = md.goalPlayer.closest(".matchday-event-card");
+  const eventCard = md.eventPlayer.closest(".matchday-event-card");
+  goalCard.querySelector("strong").textContent = "Goal";
+  eventCard.querySelector("strong").textContent = "Player Event";
+
+  md.eventType.innerHTML = `
+    <option value="Yellow">Yellow Card</option>
+    <option value="Red">Red Card</option>
+    <option value="Sin Bin">Sin Bin</option>
+    <option value="Event">Event</option>`;
+
+  const eventTextLabel = document.createElement("label");
+  eventTextLabel.id = "matchday-player-event-text-label";
+  eventTextLabel.className = "hidden";
+  eventTextLabel.innerHTML = `Event<input id="matchday-player-event-text" class="matchday-input" type="text" placeholder="What happened?" />`;
+  md.eventMinute.closest(".matchday-event-grid").insertBefore(eventTextLabel, md.eventMinute.closest("label"));
+
+  md.addSub.textContent = "✓";
+  md.addSub.title = "Record substitution";
+  md.addSub.className = "matchday-tick-button";
+  subSection.querySelector(".matchday-sub-grid").appendChild(md.addSub);
+
+  md.addGoal.textContent = "✓";
+  md.addGoal.title = "Record goal";
+  md.addGoal.className = "matchday-tick-button";
+  goalCard.querySelector(".matchday-event-grid").appendChild(md.addGoal);
+
+  md.addEvent.textContent = "✓";
+  md.addEvent.title = "Record player event";
+  md.addEvent.className = "matchday-tick-button";
+  eventCard.querySelector(".matchday-event-grid").appendChild(md.addEvent);
+
+  md.goalList = document.createElement("div");
+  md.goalList.className = "matchday-event-list";
+  goalCard.appendChild(md.goalList);
+  md.playerEventList = document.createElement("div");
+  md.playerEventList.className = "matchday-event-list";
+  eventCard.appendChild(md.playerEventList);
+  md.legacyEventList.classList.add("hidden");
+
+  let cancel = document.getElementById("matchday-cancel");
+  if (!cancel) {
+    cancel = document.createElement("button");
+    cancel.id = "matchday-cancel";
+    cancel.type = "button";
+    cancel.textContent = "Cancel Matchday";
+  }
+  cancel.className = "danger-button matchday-wide matchday-cancel-bottom";
+  md.live.appendChild(cancel);
+  md.cancel = cancel;
+
+  const overlay = document.createElement("div");
+  overlay.id = "matchday-correction-overlay";
+  overlay.className = "matchday-correction-overlay hidden";
+  overlay.innerHTML = `<div class="matchday-correction-dialog">
+    <strong id="matchday-correction-title">Recorded item</strong>
+    <button id="matchday-correction-edit" class="secondary-button" type="button">Edit</button>
+    <button id="matchday-correction-delete" class="danger-button" type="button">Delete</button>
+    <button id="matchday-correction-cancel" class="small-button" type="button">Cancel</button>
+  </div>`;
+  document.body.appendChild(overlay);
+  md.correctionOverlay = overlay;
+  md.correctionTitle = document.getElementById("matchday-correction-title");
+  md.correctionEdit = document.getElementById("matchday-correction-edit");
+  md.correctionDelete = document.getElementById("matchday-correction-delete");
+  md.correctionCancel = document.getElementById("matchday-correction-cancel");
 }
 
 function renderFixtures() {
@@ -150,13 +252,24 @@ function renderFixtures() {
     md.fixture.appendChild(option);
   });
   if (!state.fixtureId && matchdayFixtures.length) {
-    const today = new Date().toISOString().slice(0,10);
+    const today = new Date().toISOString().slice(0, 10);
     state.fixtureId = (matchdayFixtures.find(f => f.date >= today) || matchdayFixtures[0]).id;
-    saveState();
   }
   md.fixture.value = state.fixtureId || "";
   const f = fixture();
   md.fixtureMeta.textContent = f ? `${f.competition || "Competition TBC"} · ${f.venue || "Venue TBC"}` : "Select a fixture.";
+  saveState();
+}
+
+function toggleStarter(id) {
+  if (state.starterIds.includes(id)) {
+    state.starterIds = state.starterIds.filter(x => x !== id);
+  } else {
+    if (state.starterIds.length >= MATCHDAY_STARTERS) return window.alert("Starting lineup is limited to 11 players.");
+    state.starterIds.push(id);
+  }
+  saveState();
+  renderStarters();
 }
 
 function renderStarters() {
@@ -164,34 +277,13 @@ function renderStarters() {
   const squad = matchdayPlayers.filter(p => state.squadIds.includes(p.id));
   md.squadCount.textContent = `${squad.length} player${squad.length === 1 ? "" : "s"} from Attendance`;
   md.starterCount.textContent = `${state.starterIds.length} selected`;
-
-  if (!squad.length) {
-    const note = document.createElement("p");
-    note.className = "matchday-help";
-    note.textContent = "No Match squad yet. Return to Attendance and mark players Present or Late.";
-    md.starterList.appendChild(note);
-    return;
-  }
-
   squad.forEach(p => {
-    const label = document.createElement("label");
-    label.className = `matchday-player-choice${state.starterIds.includes(p.id) ? " selected" : ""}`;
-    const input = document.createElement("input");
-    input.type = "checkbox";
-    input.checked = state.starterIds.includes(p.id);
-    input.addEventListener("change", () => {
-      if (input.checked) {
-        if (!state.starterIds.includes(p.id)) state.starterIds.push(p.id);
-      } else {
-        state.starterIds = state.starterIds.filter(id => id !== p.id);
-      }
-      saveState();
-      renderSetup();
-    });
-    const text = document.createElement("span");
-    text.textContent = p.position ? `${p.displayName} · ${p.position}` : p.displayName;
-    label.append(input, text);
-    md.starterList.appendChild(label);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `matchday-player-choice${state.starterIds.includes(p.id) ? " selected" : ""}`;
+    button.textContent = p.position ? `${p.displayName} · ${p.position}` : p.displayName;
+    button.addEventListener("click", () => toggleStarter(p.id));
+    md.starterList.appendChild(button);
   });
 }
 
@@ -207,36 +299,43 @@ function openInterval(id, second) {
 }
 
 function closeInterval(id, second) {
-  const intervals = state.intervals[id] || [];
-  const open = [...intervals].reverse().find(i => i.end === null);
-  if (!open || second < open.start) return false;
-  open.end = second;
+  const current = [...(state.intervals[id] || [])].reverse().find(i => i.end === null);
+  if (!current || second < current.start) return false;
+  current.end = second;
   return true;
 }
 
 function startMatch() {
   syncSetupSquad();
-  if (!fixture()) return alert("Select a fixture first.");
-  if (!state.squadIds.length) return alert("Mark the Match squad Present or Late on Attendance first.");
-  if (!state.starterIds.length) return alert("Select at least one starter.");
-  if (state.starterIds.length < MATCHDAY_STARTERS && !confirm(`You have selected ${state.starterIds.length} starters instead of 11. Start anyway?`)) return;
+  if (!fixture()) return window.alert("Select a fixture first.");
+  if (!state.squadIds.length) return window.alert("Mark the match squad Present or Late first.");
+  if (!state.starterIds.length) return window.alert("Select at least one starter.");
+  if (state.starterIds.length > 11) return window.alert("Starting lineup is limited to 11 players.");
+  if (state.starterIds.length < 11 && !window.confirm(`You have selected ${state.starterIds.length} starters. Start anyway?`)) return;
 
   const now = Date.now();
-  state.status = "running";
-  state.accumulatedSeconds = 0;
-  state.lastResumeEpoch = now;
-  state.startedAt = new Date(now).toISOString();
-  state.finishedAt = null;
-  state.substitutions = [];
-  state.events = [];
-  state.lineupIds = [...state.starterIds];
-  state.intervals = {};
-  state.submittedBy = typeof getCurrentUserName === "function" ? getCurrentUserName() : "Unknown";
-  state.supabaseId = null;
+  state = {
+    ...state,
+    status: "running",
+    accumulatedSeconds: 0,
+    lastResumeEpoch: now,
+    startedAt: new Date(now).toISOString(),
+    finishedAt: null,
+    substitutions: [],
+    events: [],
+    lineupIds: [...state.starterIds],
+    intervals: {},
+    submittedBy: typeof getCurrentUserName === "function" ? getCurrentUserName() : "Unknown",
+    supabaseId: null,
+    recoveryId: null,
+    safetyStopTriggered: false
+  };
   state.starterIds.forEach(id => openInterval(id, 0));
   saveState();
   renderMatchday();
   startTicker();
+  startAutosave();
+  saveRecovery("kickoff");
 }
 
 function pauseMatch() {
@@ -244,294 +343,556 @@ function pauseMatch() {
   state.accumulatedSeconds = elapsedSeconds();
   state.lastResumeEpoch = null;
   state.status = "paused";
-  saveState(); renderLive(); stopTicker();
+  saveState();
+  stopTicker();
+  renderLive();
+  saveRecovery("pause");
 }
 
 function resumeMatch() {
   if (state.status !== "paused") return;
   state.status = "running";
   state.lastResumeEpoch = Date.now();
-  saveState(); renderLive(); startTicker();
+  saveState();
+  renderLive();
+  startTicker();
+  startAutosave();
 }
 
-function fillSelect(select, ids, blankText = null) {
-  const previous = select.value;
-  select.innerHTML = "";
-  if (blankText !== null) {
-    const blank = document.createElement("option"); blank.value = ""; blank.textContent = blankText; select.appendChild(blank);
-  }
-  ids.forEach(id => {
-    const o = document.createElement("option"); o.value = id; o.textContent = playerName(id); select.appendChild(o);
+function renderLineup() {
+  md.lineup.innerHTML = "";
+  const groups = ["Goalkeeper", "Defence", "Midfield", "Attack", "Other"];
+  const flat = document.createElement("div");
+  flat.className = "matchday-position-chips-flat";
+  groups.forEach(group => {
+    const ids = state.lineupIds.filter(id => positionGroup(playerPosition(id)) === group);
+    if (!ids.length) return;
+    const run = document.createElement("span");
+    run.className = "matchday-pos-run";
+    ids.forEach(id => {
+      const chip = document.createElement("span");
+      chip.className = `matchday-lineup-chip position-${group.toLowerCase()}`;
+      chip.textContent = playerPosition(id) ? `${playerName(id)} · ${playerPosition(id)}` : playerName(id);
+      run.appendChild(chip);
+    });
+    flat.appendChild(run);
   });
-  if ([...select.options].some(o => o.value === previous)) select.value = previous;
+  md.lineup.appendChild(flat);
 }
 
-function renderSubControls() {
+function renderControls() {
+  syncLateArrivals();
   fillSelect(md.subOff, state.lineupIds);
   fillSelect(md.subOn, state.squadIds.filter(id => !state.lineupIds.includes(id)));
-  if (document.activeElement !== md.subMinute) md.subMinute.value = matchMinute();
-}
-
-function addSub() {
-  syncLateArrivals();
-  const off = md.subOff.value, on = md.subOn.value;
-  if (!off || !on || off === on) return alert("Choose a player off and a different player on.");
-  const second = Math.min(Math.max(0, Number(md.subMinute.value) || matchMinute()) * 60, elapsedSeconds());
-  if (!closeInterval(off, second)) return alert("That substitution minute is before this player's current spell.");
-  openInterval(on, second);
-  state.lineupIds = state.lineupIds.filter(id => id !== off); state.lineupIds.push(on);
-  state.substitutions.push({ minute: Math.floor(second / 60), second: Math.round(second), off, on });
-  saveState(); renderLive();
-}
-
-function renderAssistOptions() {
+  fillSelect(md.goalPlayer, state.squadIds);
+  fillSelect(md.eventPlayer, state.squadIds);
   fillSelect(md.goalAssist, state.squadIds.filter(id => id !== md.goalPlayer.value), "No assist / unknown");
-}
-
-function updateAssistVisibility() {
   const openPlay = md.goalType.value === "Open Play";
   md.assistLabel.classList.toggle("hidden", !openPlay);
   if (!openPlay) md.goalAssist.value = "";
+  document.getElementById("matchday-player-event-text-label")?.classList.toggle("hidden", md.eventType.value !== "Event");
+  if (document.activeElement !== md.subMinute) md.subMinute.value = matchMinute();
+  if (document.activeElement !== md.goalMinute) md.goalMinute.value = matchMinute();
+  if (document.activeElement !== md.eventMinute) md.eventMinute.value = matchMinute();
 }
 
-function renderEventControls() {
-  fillSelect(md.goalPlayer, state.squadIds);
-  fillSelect(md.cardPlayer, state.squadIds);
-  renderAssistOptions();
-  updateAssistVisibility();
-  if (document.activeElement !== md.goalMinute) md.goalMinute.value = matchMinute();
-  if (document.activeElement !== md.cardMinute) md.cardMinute.value = matchMinute();
+function addSubstitution() {
+  syncLateArrivals();
+  const off = md.subOff.value;
+  const on = md.subOn.value;
+  if (!off || !on || off === on) return window.alert("Choose a player off and a different player on.");
+  const minute = Math.max(0, Math.floor(Number(md.subMinute.value) || matchMinute()));
+  const second = Math.min(minute * 60, elapsedSeconds());
+  if (!closeInterval(off, second)) return window.alert("That substitution minute is before this player's current spell.");
+  openInterval(on, second);
+  state.lineupIds = state.lineupIds.filter(id => id !== off);
+  state.lineupIds.push(on);
+  state.substitutions.push({ minute: Math.floor(second / 60), second: Math.round(second), off, on });
+  saveState();
+  renderLive();
+  saveRecovery("substitution");
 }
 
 function addGoal() {
   syncLateArrivals();
   const scorer = md.goalPlayer.value;
-  if (!scorer) return alert("Choose the goal scorer.");
+  if (!scorer) return window.alert("Choose the goal scorer.");
   const goalType = md.goalType.value;
-  const event = { type: "Goal", playerId: scorer, minute: Math.max(0, Number(md.goalMinute.value) || matchMinute()), goalType };
+  const event = { type: "Goal", playerId: scorer, minute: Math.max(0, Math.floor(Number(md.goalMinute.value) || matchMinute())), goalType };
   if (goalType === "Open Play" && md.goalAssist.value) event.assistPlayerId = md.goalAssist.value;
-  state.events.push(event); saveState(); renderLive();
+  state.events.push(event);
+  saveState();
+  renderLive();
+  saveRecovery("goal");
 }
 
-function addCard() {
+function addPlayerEvent() {
   syncLateArrivals();
-  const id = md.cardPlayer.value;
-  if (!id) return alert("Choose the player.");
-  state.events.push({ type: "Card", playerId: id, minute: Math.max(0, Number(md.cardMinute.value) || matchMinute()), cardType: md.cardType.value });
-  saveState(); renderLive();
+  const playerId = md.eventPlayer.value;
+  if (!playerId) return window.alert("Choose the player.");
+  const minute = Math.max(0, Math.floor(Number(md.eventMinute.value) || matchMinute()));
+  if (md.eventType.value === "Event") {
+    const input = document.getElementById("matchday-player-event-text");
+    const text = input.value.trim();
+    if (!text) return window.alert("Enter the event text.");
+    state.events.push({ type: "Note", playerId, minute, text });
+    input.value = "";
+  } else {
+    state.events.push({ type: "Card", playerId, minute, cardType: md.eventType.value });
+  }
+  saveState();
+  renderLive();
+  saveRecovery("player-event");
 }
 
-function renderLineup() {
-  md.lineup.innerHTML = "";
-  const groups = ["Goalkeeper","Defence","Midfield","Attack","Other"];
-  groups.forEach(group => {
-    const ids = state.lineupIds.filter(id => positionGroup(playerPosition(id)) === group);
-    if (!ids.length) return;
-    const section = document.createElement("div"); section.className = "matchday-position-group";
-    const heading = document.createElement("div"); heading.className = "matchday-position-heading"; heading.textContent = group;
-    const chips = document.createElement("div"); chips.className = "matchday-position-chips";
-    ids.forEach(id => {
-      const chip = document.createElement("span"); chip.className = `matchday-lineup-chip position-${group.toLowerCase()}`;
-      chip.textContent = playerPosition(id) ? `${playerName(id)} · ${playerPosition(id)}` : playerName(id);
-      chips.appendChild(chip);
-    });
-    section.append(heading, chips); md.lineup.appendChild(section);
-  });
+let correctionAction = null;
+function openCorrection(title, editFn, deleteFn) {
+  md.correctionTitle.textContent = title;
+  correctionAction = { editFn, deleteFn };
+  md.correctionOverlay.classList.remove("hidden");
+}
+function closeCorrection() {
+  md.correctionOverlay.classList.add("hidden");
+  correctionAction = null;
+}
+function spanner(title, editFn, deleteFn) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "matchday-spanner";
+  button.textContent = "🔧";
+  button.addEventListener("click", () => openCorrection(title, editFn, deleteFn));
+  return button;
 }
 
-function renderLists() {
+function askMinute(current) {
+  const value = window.prompt("Minute", String(current ?? 0));
+  if (value === null) return null;
+  const number = Number(value);
+  if (!Number.isFinite(number) || number < 0) {
+    window.alert("Enter a valid minute.");
+    return undefined;
+  }
+  return Math.floor(number);
+}
+function askPlayer(current, label) {
+  const names = state.squadIds.map(id => playerName(id)).join(", ");
+  const value = window.prompt(`${label}\n\nSquad: ${names}`, playerName(current));
+  if (value === null) return null;
+  const id = state.squadIds.find(x => playerName(x).toLowerCase() === value.trim().toLowerCase());
+  if (!id) {
+    window.alert("Player not recognised.");
+    return undefined;
+  }
+  return id;
+}
+
+function rebuildSubState(proposed) {
+  const intervals = {};
+  const lineup = [...state.starterIds];
+  const open = (id, second) => { intervals[id] ||= []; intervals[id].push({ start: second, end: null }); };
+  const close = (id, second) => {
+    const current = [...(intervals[id] || [])].reverse().find(i => i.end === null);
+    if (!current || second < current.start) return false;
+    current.end = second;
+    return true;
+  };
+  state.starterIds.forEach(id => open(id, 0));
+  const ordered = proposed.map(s => ({ ...s })).sort((a, b) => Number(a.second || 0) - Number(b.second || 0));
+  for (const sub of ordered) {
+    const second = Math.max(0, Number(sub.second ?? Number(sub.minute || 0) * 60));
+    if (!lineup.includes(sub.off) || lineup.includes(sub.on) || !close(sub.off, second)) return null;
+    open(sub.on, second);
+    lineup.splice(lineup.indexOf(sub.off), 1, sub.on);
+    sub.second = Math.round(second);
+    sub.minute = Math.floor(second / 60);
+  }
+  return { intervals, lineup, ordered };
+}
+
+function applySubChanges(proposed) {
+  const rebuilt = rebuildSubState(proposed);
+  if (!rebuilt) return window.alert("That correction would make the substitution sequence invalid.");
+  state.intervals = rebuilt.intervals;
+  state.lineupIds = rebuilt.lineup;
+  state.substitutions = rebuilt.ordered;
+  saveState();
+  renderLive();
+  saveRecovery("substitution-correction");
+}
+
+function editSub(index) {
+  const sub = state.substitutions[index];
+  if (!sub) return;
+  const minute = askMinute(sub.minute); if (minute == null || minute === undefined) return;
+  const off = askPlayer(sub.off, "Player off"); if (off == null || off === undefined) return;
+  const on = askPlayer(sub.on, "Player on"); if (on == null || on === undefined) return;
+  if (off === on) return window.alert("Players must be different.");
+  applySubChanges(state.substitutions.map((s, i) => i === index ? { ...s, minute, second: minute * 60, off, on } : { ...s }));
+}
+function deleteSub(index) {
+  if (!window.confirm("Delete this substitution?")) return;
+  applySubChanges(state.substitutions.filter((_, i) => i !== index));
+}
+
+function editEvent(index) {
+  const event = state.events[index];
+  if (!event) return;
+  const minute = askMinute(event.minute); if (minute == null || minute === undefined) return;
+  const playerId = askPlayer(event.playerId, "Player"); if (playerId == null || playerId === undefined) return;
+  event.minute = minute;
+  event.playerId = playerId;
+  if (event.type === "Goal") {
+    const type = window.prompt("Goal type: Open Play or Penalty", event.goalType || "Open Play");
+    if (type === null) return;
+    if (!['open play', 'penalty'].includes(type.trim().toLowerCase())) return window.alert("Use Open Play or Penalty.");
+    event.goalType = type.trim().toLowerCase() === "penalty" ? "Penalty" : "Open Play";
+    if (event.goalType === "Penalty") delete event.assistPlayerId;
+    else {
+      const names = state.squadIds.map(id => playerName(id)).join(", ");
+      const assist = window.prompt(`Assist (blank for none)\n\nSquad: ${names}`, event.assistPlayerId ? playerName(event.assistPlayerId) : "");
+      if (assist === null) return;
+      if (!assist.trim()) delete event.assistPlayerId;
+      else {
+        const aid = state.squadIds.find(id => playerName(id).toLowerCase() === assist.trim().toLowerCase());
+        if (!aid || aid === event.playerId) return window.alert("Assist player not recognised.");
+        event.assistPlayerId = aid;
+      }
+    }
+  } else if (event.type === "Card") {
+    const current = event.cardType === "Yellow" ? "Yellow Card" : event.cardType === "Red" ? "Red Card" : "Sin Bin";
+    const type = window.prompt("Type: Yellow Card, Red Card or Sin Bin", current);
+    if (type === null) return;
+    const map = { "yellow card": "Yellow", "red card": "Red", "sin bin": "Sin Bin" };
+    const mapped = map[type.trim().toLowerCase()];
+    if (!mapped) return window.alert("Use Yellow Card, Red Card or Sin Bin.");
+    event.cardType = mapped;
+  } else {
+    const text = window.prompt("Event", event.text || "");
+    if (text === null) return;
+    if (!text.trim()) return window.alert("Event cannot be blank.");
+    event.text = text.trim();
+  }
+  saveState();
+  renderLive();
+  saveRecovery("event-correction");
+}
+function deleteEvent(index) {
+  if (!window.confirm("Delete this recorded item?")) return;
+  state.events.splice(index, 1);
+  saveState();
+  renderLive();
+  saveRecovery("event-delete");
+}
+
+function renderRecordedItems() {
   md.subList.innerHTML = "";
-  state.substitutions.forEach(s => {
-    const row = document.createElement("div"); row.className = "matchday-sub-row";
-    row.innerHTML = `<span>${s.minute}'</span><span>${playerName(s.off)} OFF → ${playerName(s.on)} ON</span>`;
+  state.substitutions.forEach((sub, index) => {
+    const text = `${sub.minute}' · ${playerName(sub.off)} OFF → ${playerName(sub.on)} ON`;
+    const row = document.createElement("div");
+    row.className = "matchday-sub-row";
+    const span = document.createElement("span"); span.textContent = text;
+    row.append(span, spanner(text, () => editSub(index), () => deleteSub(index)));
     md.subList.appendChild(row);
   });
 
-  md.eventList.innerHTML = "";
-  [...state.events].sort((a,b) => a.minute - b.minute).forEach(e => {
-    const row = document.createElement("div"); row.className = "matchday-event-row";
-    if (e.type === "Goal") {
-      const assist = e.assistPlayerId ? ` · Assist: ${playerName(e.assistPlayerId)}` : "";
-      row.innerHTML = `<span>${e.minute}'</span><span>⚽ ${playerName(e.playerId)} · ${e.goalType}${assist}</span>`;
+  md.goalList.innerHTML = "";
+  md.playerEventList.innerHTML = "";
+  state.events.map((event, index) => ({ event, index })).sort((a, b) => a.event.minute - b.event.minute).forEach(({ event, index }) => {
+    const row = document.createElement("div");
+    row.className = "matchday-event-row";
+    let text;
+    if (event.type === "Goal") {
+      text = `${event.minute}' · ${playerName(event.playerId)} · ${event.goalType}${event.assistPlayerId ? ` · Assist: ${playerName(event.assistPlayerId)}` : ""}`;
+    } else if (event.type === "Card") {
+      const label = event.cardType === "Yellow" ? "Yellow Card" : event.cardType === "Red" ? "Red Card" : event.cardType;
+      text = `${event.minute}' · ${playerName(event.playerId)} · ${label}`;
     } else {
-      const icon = e.cardType === "Yellow" ? "🟨" : e.cardType === "Red" ? "🟥" : "⏱️";
-      row.innerHTML = `<span>${e.minute}'</span><span>${icon} ${playerName(e.playerId)} · ${e.cardType}</span>`;
+      text = `${event.minute}' · ${playerName(event.playerId)} · ${event.text}`;
     }
-    md.eventList.appendChild(row);
+    const span = document.createElement("span"); span.textContent = text;
+    row.append(span, spanner(text, () => editEvent(index), () => deleteEvent(index)));
+    (event.type === "Goal" ? md.goalList : md.playerEventList).appendChild(row);
   });
 }
 
 function renderLive() {
-  syncLateArrivals();
-  md.liveFixture.textContent = fixture() ? labelFixture(fixture()) : "Match";
+  const f = fixture();
+  md.liveFixture.textContent = f ? labelFixture(f) : "Match";
   md.clock.textContent = formatClock(elapsedSeconds());
   md.clockState.textContent = state.status === "paused" ? "Paused / Half Time" : "Match Running";
   md.pause.classList.toggle("hidden", state.status !== "running");
   md.resume.classList.toggle("hidden", state.status !== "paused");
-  renderLineup(); renderSubControls(); renderEventControls(); renderLists();
+  renderLineup();
+  renderControls();
+  renderRecordedItems();
 }
 
-function totalSeconds(id, finalSecond = elapsedSeconds()) {
-  return (state.intervals[id] || []).reduce((sum, interval) => sum + Math.max(0, (interval.end ?? finalSecond) - interval.start), 0);
+function playerMinutes(id, finalSecond) {
+  return Math.round((state.intervals[id] || []).reduce((sum, interval) => sum + Math.max(0, (interval.end ?? finalSecond) - interval.start), 0) / 60);
 }
 
 function payload(finalSecond) {
+  const f = fixture();
   return {
     team: "Welling United Red OBDSFL",
-    season: "2026/27",
-    fixture: fixture(),
+    season: "2026-27",
     matchId: state.fixtureId,
+    fixture: f ? { id: f.id, date: f.date, opposition: f.opposition, competition: f.competition || "", venue: f.venue || "" } : {},
+    submittedBy: state.submittedBy,
     startedAt: state.startedAt,
     finishedAt: state.finishedAt,
     matchSeconds: Math.round(finalSecond),
-    matchMinutes: Math.round(finalSecond / 60),
-    submittedBy: state.submittedBy,
-    squad: state.squadIds.map(id => ({ playerId: id, displayName: playerName(id), position: playerPosition(id) || null })),
+    squad: state.squadIds.map(id => ({ playerId: id, displayName: playerName(id), position: playerPosition(id) })),
     starters: [...state.starterIds],
-    substitutions: [...state.substitutions],
-    events: [...state.events],
-    playerStats: state.squadIds.map(id => ({
-      playerId: id,
-      displayName: playerName(id),
-      position: playerPosition(id) || null,
-      starter: state.starterIds.includes(id),
-      secondsPlayed: Math.round(totalSeconds(id, finalSecond)),
-      minutesPlayed: Math.round(totalSeconds(id, finalSecond) / 60)
-    }))
+    substitutions: state.substitutions.map(s => ({ ...s })),
+    events: state.events.map(e => ({ ...e })),
+    playerStats: state.squadIds.map(id => ({ playerId: id, displayName: playerName(id), starter: state.starterIds.includes(id), minutesPlayed: playerMinutes(id, finalSecond) }))
   };
 }
 
-async function saveToSupabase(data) {
+async function saveCompletedToSupabase(data) {
   if (typeof isSupabaseConfigured !== "function" || !isSupabaseConfigured()) throw new Error("Supabase not configured");
-  const { data: inserted, error } = await getSupabaseClient().from("matchday_sessions").insert({
+  const f = data.fixture || {};
+  const row = {
     team: data.team,
     season: data.season,
     match_id: data.matchId,
-    match_date: data.fixture?.date || null,
-    opposition: data.fixture?.opposition || null,
-    competition: data.fixture?.competition || null,
+    match_date: f.date || null,
+    opposition: f.opposition || null,
+    competition: f.competition || null,
     submitted_by: data.submittedBy,
     started_at: data.startedAt,
     finished_at: data.finishedAt,
     match_seconds: data.matchSeconds,
     payload: data
-  }).select("id").single();
+  };
+  const { data: inserted, error } = await getSupabaseClient().from("matchday_sessions").insert(row).select("id").single();
   if (error) throw error;
   return inserted.id;
 }
 
-async function finishMatch() {
-  if (!["running","paused"].includes(state.status) || !confirm("Finish this match and calculate minutes played?")) return;
-  const finalSecond = elapsedSeconds();
-  state.accumulatedSeconds = finalSecond; state.lastResumeEpoch = null;
-  state.lineupIds.forEach(id => closeInterval(id, finalSecond));
-  state.status = "finished"; state.finishedAt = new Date().toISOString(); saveState(); stopTicker(); renderMatchday();
-  md.saveStatus.textContent = "Saving Matchday to Supabase...";
+async function saveRecovery(reason) {
+  if (autosaveBusy || !["running", "paused"].includes(state.status)) return;
+  if (typeof isSupabaseConfigured !== "function" || !isSupabaseConfigured()) return;
+  autosaveBusy = true;
   try {
-    state.supabaseId = await saveToSupabase(payload(finalSecond)); saveState();
-    md.saveStatus.textContent = `Saved to Supabase · ${state.supabaseId.slice(0,8)}`;
+    const data = payload(elapsedSeconds());
+    data.recovery = { live: true, reason, savedAt: new Date().toISOString() };
+    const f = data.fixture || {};
+    const row = {
+      team: data.team,
+      season: data.season,
+      match_id: data.matchId,
+      match_date: f.date || null,
+      opposition: f.opposition || null,
+      submitted_by: data.submittedBy,
+      started_at: data.startedAt,
+      saved_at: new Date().toISOString(),
+      reason,
+      match_seconds: data.matchSeconds,
+      payload: data
+    };
+    const client = getSupabaseClient();
+    if (state.recoveryId) {
+      const { error } = await client.from("matchday_recovery").update(row).eq("id", state.recoveryId);
+      if (error) throw error;
+    } else {
+      const { data: inserted, error } = await client.from("matchday_recovery").insert(row).select("id").single();
+      if (error) throw error;
+      state.recoveryId = inserted.id;
+      saveState();
+    }
   } catch (error) {
-    console.error(error); md.saveStatus.textContent = "Supabase save failed. Matchday remains saved on this device.";
+    console.warn("Matchday recovery save failed", error);
+  } finally {
+    autosaveBusy = false;
   }
 }
 
-function cancelMatchday() {
-  const warning = "Cancel Matchday? This will reset the timer and delete all substitutions, goals, cards and Matchday data for this match.";
-  if (!confirm(warning)) return;
-  stopTicker(); state = emptyState(); saveState(); renderMatchday(); closeMatchday();
+async function clearRecovery() {
+  if (!state.recoveryId || typeof isSupabaseConfigured !== "function" || !isSupabaseConfigured()) return;
+  try { await getSupabaseClient().from("matchday_recovery").delete().eq("id", state.recoveryId); } catch {}
+  state.recoveryId = null;
+  saveState();
 }
 
-function resetMatch() {
-  if (!confirm("Clear this finished Matchday and start a new one?")) return;
-  state = emptyState(); saveState(); renderMatchday();
+function startAutosave() {
+  if (!autosaveHandle) autosaveHandle = setInterval(() => saveRecovery("interval"), MATCHDAY_AUTOSAVE_MS);
+}
+function stopAutosave() {
+  if (autosaveHandle) clearInterval(autosaveHandle);
+  autosaveHandle = null;
+}
+
+async function safetyCheck() {
+  if (state.status !== "running" || state.safetyStopTriggered || elapsedSeconds() < MATCHDAY_SAFETY_SECONDS) return;
+  state.accumulatedSeconds = MATCHDAY_SAFETY_SECONDS;
+  state.lastResumeEpoch = null;
+  state.status = "paused";
+  state.safetyStopTriggered = true;
+  saveState();
+  stopTicker();
+  renderLive();
+  await saveRecovery("180-minute-safety-stop");
+  window.alert("Matchday has reached 180 minutes. The clock has been paused and the current data saved centrally. Choose Full Time, or Resume if needed.");
+}
+
+async function finishMatch() {
+  if (!["running", "paused"].includes(state.status)) return;
+  const finalSecond = Math.round(elapsedSeconds());
+  if (state.status === "running") {
+    state.accumulatedSeconds = finalSecond;
+    state.lastResumeEpoch = null;
+  }
+  state.lineupIds.forEach(id => closeInterval(id, finalSecond));
+  state.status = "finished";
+  state.finishedAt = new Date().toISOString();
+  stopTicker();
+  stopAutosave();
+  saveState();
+  renderMatchday();
+  md.saveStatus.textContent = "Saving Matchday to Supabase...";
+  try {
+    state.supabaseId = await saveCompletedToSupabase(payload(finalSecond));
+    saveState();
+    await clearRecovery();
+    md.saveStatus.textContent = `Saved to Supabase · ${state.supabaseId.slice(0, 8)}`;
+  } catch (error) {
+    console.error(error);
+    md.saveStatus.textContent = "Save failed. Matchday is safe on this device; use Retry Save when connected.";
+    ensureRetryButton();
+  }
+}
+
+function ensureRetryButton() {
+  let button = document.getElementById("matchday-retry-save");
+  if (button) { button.classList.remove("hidden"); return; }
+  button = document.createElement("button");
+  button.id = "matchday-retry-save";
+  button.className = "primary-button matchday-wide";
+  button.type = "button";
+  button.textContent = "Retry Save to Supabase";
+  button.addEventListener("click", async () => {
+    button.disabled = true;
+    try {
+      state.supabaseId = await saveCompletedToSupabase(payload(Number(state.accumulatedSeconds || 0)));
+      saveState();
+      await clearRecovery();
+      md.saveStatus.textContent = `Saved to Supabase · ${state.supabaseId.slice(0, 8)}`;
+      button.remove();
+    } catch {
+      md.saveStatus.textContent = "Save failed again. Retry when connected.";
+    } finally { button.disabled = false; }
+  });
+  md.reset.parentNode.insertBefore(button, md.reset);
 }
 
 function renderFinished() {
-  const finalSecond = Number(state.accumulatedSeconds || 0);
-  md.finishedFixture.textContent = fixture() ? labelFixture(fixture()) : "Match";
-  md.finishedClock.textContent = formatClock(finalSecond);
+  const f = fixture();
+  md.finishedFixture.textContent = f ? labelFixture(f) : "Match";
+  md.finishedClock.textContent = formatClock(Number(state.accumulatedSeconds || 0));
   md.minutesList.innerHTML = "";
-  state.squadIds
-    .map(id => ({ id, seconds: totalSeconds(id, finalSecond) }))
-    .sort((a,b) => b.seconds - a.seconds)
-    .forEach(s => {
-      const row = document.createElement("div"); row.className = "matchday-minute-row";
-      row.innerHTML = `<span>${playerName(s.id)}</span><span>${Math.round(s.seconds / 60)} mins</span>`;
-      md.minutesList.appendChild(row);
-    });
-  md.saveStatus.textContent = state.supabaseId ? `Saved to Supabase · ${state.supabaseId.slice(0,8)}` : "Match finished.";
+  state.squadIds.forEach(id => {
+    const row = document.createElement("div");
+    row.className = "matchday-minute-row";
+    row.innerHTML = `<span>${playerName(id)}</span><strong>${playerMinutes(id, Number(state.accumulatedSeconds || 0))} min</strong>`;
+    md.minutesList.appendChild(row);
+  });
+  if (state.supabaseId) md.saveStatus.textContent = `Saved to Supabase · ${state.supabaseId.slice(0, 8)}`;
+  else if (state.status === "finished") ensureRetryButton();
+}
+
+function cancelMatchday() {
+  if (!window.confirm("Cancel Matchday? This resets the timer, substitutions, goals, cards and events.")) return;
+  const recoveryId = state.recoveryId;
+  stopTicker();
+  stopAutosave();
+  state = emptyMatchdayState();
+  saveState();
+  if (recoveryId && typeof isSupabaseConfigured === "function" && isSupabaseConfigured()) {
+    getSupabaseClient().from("matchday_recovery").delete().eq("id", recoveryId).then(() => {}).catch(() => {});
+  }
+  renderMatchday();
+}
+
+function resetMatchday() {
+  state = emptyMatchdayState();
+  saveState();
+  renderMatchday();
 }
 
 function renderMatchday() {
   md.setup.classList.toggle("hidden", state.status !== "setup");
-  md.live.classList.toggle("hidden", !["running","paused"].includes(state.status));
+  md.live.classList.toggle("hidden", !["running", "paused"].includes(state.status));
   md.finished.classList.toggle("hidden", state.status !== "finished");
   if (state.status === "setup") renderSetup();
-  else if (["running","paused"].includes(state.status)) renderLive();
-  else renderFinished();
+  if (["running", "paused"].includes(state.status)) renderLive();
+  if (state.status === "finished") renderFinished();
 }
 
 function startTicker() {
   stopTicker();
   timerHandle = setInterval(() => {
-    if (state.status !== "running") return;
-    md.clock.textContent = formatClock(elapsedSeconds());
-    if (document.activeElement !== md.subMinute) md.subMinute.value = matchMinute();
-    if (document.activeElement !== md.goalMinute) md.goalMinute.value = matchMinute();
-    if (document.activeElement !== md.cardMinute) md.cardMinute.value = matchMinute();
+    if (state.status === "running") {
+      md.clock.textContent = formatClock(elapsedSeconds());
+      if (document.activeElement !== md.subMinute) md.subMinute.value = matchMinute();
+      if (document.activeElement !== md.goalMinute) md.goalMinute.value = matchMinute();
+      if (document.activeElement !== md.eventMinute) md.eventMinute.value = matchMinute();
+      safetyCheck();
+    }
   }, 1000);
 }
-function stopTicker() { if (timerHandle) clearInterval(timerHandle); timerHandle = null; }
+function stopTicker() {
+  if (timerHandle) clearInterval(timerHandle);
+  timerHandle = null;
+}
 
-function openMatchday() { state.status === "setup" ? syncSetupSquad() : syncLateArrivals(); renderMatchday(); md.view.classList.remove("hidden"); document.body.style.overflow = "hidden"; }
-function closeMatchday() { if (state.status === "running") { state.accumulatedSeconds = elapsedSeconds(); state.lastResumeEpoch = Date.now(); saveState(); } md.view.classList.add("hidden"); document.body.style.overflow = ""; }
+async function openMatchday() {
+  syncSetupSquad();
+  md.view.classList.remove("hidden");
+  renderMatchday();
+  if (state.status === "running") { startTicker(); startAutosave(); saveRecovery("app-reopen"); }
+  if (state.status === "paused") { startAutosave(); saveRecovery("app-reopen"); }
+}
 
-async function initMatchday() {
+async function loadMatchdayData() {
   try {
-    const playerUrl = window.WELLING_APP_CONFIG?.dashboardPlayersUrl || "players.json";
-    const fixtureUrl = window.WELLING_APP_CONFIG?.dashboardMatchesUrl || "matches.json";
-    const [playerResponse, fixtureResponse] = await Promise.all([
-      fetch(playerUrl, { cache: "no-store" }),
-      fetch(fixtureUrl, { cache: "no-store" })
+    const [playersResponse, matchesResponse] = await Promise.all([
+      fetch("players.json", { cache: "no-store" }),
+      fetch("matches.json", { cache: "no-store" })
     ]);
-    if (!playerResponse.ok || !fixtureResponse.ok) throw new Error("Shared Dashboard feed unavailable");
-    matchdayPlayers = (await playerResponse.json()).filter(p => p.active === true).map(p => ({ id: p.id, displayName: p.displayName, position: p.position || "" }));
-    matchdayFixtures = (await fixtureResponse.json()).filter(f => f?.id && f?.opposition);
-    updateLaunch(); renderMatchday(); if (state.status === "running") startTicker();
+    matchdayPlayers = (await playersResponse.json()).filter(p => p.active !== false);
+    matchdayFixtures = (await matchesResponse.json()).filter(m => !m.postponed);
+    renderMatchday();
   } catch (error) {
-    console.error("Matchday init failed", error); md.open.disabled = true; md.open.textContent = "Matchday unavailable";
+    console.error("Could not load Matchday data", error);
   }
 }
 
-sessionTypeElements.forEach(el => el.addEventListener("change", updateLaunch));
-md.open.addEventListener("click", openMatchday);
-md.close.addEventListener("click", closeMatchday);
-md.fixture.addEventListener("change", () => { state.fixtureId = md.fixture.value; saveState(); renderFixtures(); });
-md.start.addEventListener("click", startMatch);
-md.pause.addEventListener("click", pauseMatch);
-md.resume.addEventListener("click", resumeMatch);
-md.addSub.addEventListener("click", addSub);
-md.goalType.addEventListener("change", updateAssistVisibility);
-md.goalPlayer.addEventListener("change", renderAssistOptions);
-md.addGoal.addEventListener("click", addGoal);
-md.addCard.addEventListener("click", addCard);
-md.fullTime.addEventListener("click", finishMatch);
-md.reset.addEventListener("click", resetMatch);
+buildV3Ui();
 
-const cancelButton = document.createElement("button");
-cancelButton.id = "matchday-cancel";
-cancelButton.className = "danger-button";
-cancelButton.type = "button";
-cancelButton.textContent = "Cancel Matchday";
-cancelButton.addEventListener("click", cancelMatchday);
-document.querySelector(".matchday-live-actions")?.appendChild(cancelButton);
+md.open?.addEventListener("click", openMatchday);
+md.close?.addEventListener("click", () => md.view.classList.add("hidden"));
+md.fixture?.addEventListener("change", () => { state.fixtureId = md.fixture.value; saveState(); renderSetup(); });
+md.start?.addEventListener("click", startMatch);
+md.pause?.addEventListener("click", pauseMatch);
+md.resume?.addEventListener("click", resumeMatch);
+md.addSub?.addEventListener("click", addSubstitution);
+md.addGoal?.addEventListener("click", addGoal);
+md.addEvent?.addEventListener("click", addPlayerEvent);
+md.goalType?.addEventListener("change", renderControls);
+md.goalPlayer?.addEventListener("change", renderControls);
+md.eventType?.addEventListener("change", renderControls);
+md.fullTime?.addEventListener("click", finishMatch);
+md.cancel?.addEventListener("click", cancelMatchday);
+md.reset?.addEventListener("click", resetMatchday);
+md.correctionCancel?.addEventListener("click", closeCorrection);
+md.correctionOverlay?.addEventListener("click", event => { if (event.target === md.correctionOverlay) closeCorrection(); });
+md.correctionEdit?.addEventListener("click", () => { const fn = correctionAction?.editFn; closeCorrection(); fn?.(); });
+md.correctionDelete?.addEventListener("click", () => { const fn = correctionAction?.deleteFn; closeCorrection(); fn?.(); });
+document.querySelectorAll('input[name="session-type"]').forEach(input => input.addEventListener("change", updateLaunch));
 
-window.addEventListener("beforeunload", () => {
-  if (state.status === "running") {
-    state.accumulatedSeconds = elapsedSeconds();
-    state.lastResumeEpoch = Date.now();
-    saveState();
-  }
-});
-
-initMatchday();
+updateLaunch();
+loadMatchdayData();
+if (state.status === "running") { startTicker(); startAutosave(); }
+if (state.status === "paused") startAutosave();
