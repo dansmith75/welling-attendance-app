@@ -76,6 +76,11 @@ window.addEventListener("load", () => {
     hooks.onload = () => {
       const ui = document.createElement("script");
       ui.src = "matchday-ui-v2.js";
+      ui.onload = () => {
+        const finalUi = document.createElement("script");
+        finalUi.src = "matchday-ui-final.js";
+        document.body.appendChild(finalUi);
+      };
       document.body.appendChild(ui);
     };
     document.body.appendChild(hooks);
