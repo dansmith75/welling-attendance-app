@@ -34,8 +34,17 @@ window.WELLING_APP_CONFIG = {
 })();
 
 // The old manual Excel CSV workflow is retired. Attendance / Matchday data is
-// now reconciled from Supabase into Excel by UPDATE-WELLING. Remove the legacy
-// control after app.js has initialised so its old listener cannot affect startup.
+// now reconciled from Supabase into Excel by UPDATE-WELLING.
 window.addEventListener("load", () => {
   document.getElementById("export-excel-csv")?.remove();
 });
+
+// Load the final presentation/toggle layer after the core Attendance and
+// Matchday scripts have initialised. This layer does not own Matchday data.
+window.addEventListener("DOMContentLoaded", () => {
+  if (document.querySelector('script[data-welling-ui-polish]')) return;
+  const script = document.createElement("script");
+  script.src = "ui-polish.js";
+  script.dataset.wellingUiPolish = "true";
+  document.body.appendChild(script);
+}, { once: true });
