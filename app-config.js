@@ -58,6 +58,13 @@ window.addEventListener("DOMContentLoaded", () => {
       const finalScript = document.createElement("script");
       finalScript.src = "matchday-final.js";
       finalScript.dataset.wellingMatchdayFinal = "true";
+      finalScript.addEventListener("load", () => {
+        if (document.querySelector('script[data-welling-matchday-details]')) return;
+        const detailScript = document.createElement("script");
+        detailScript.src = "matchday-details.js";
+        detailScript.dataset.wellingMatchdayDetails = "true";
+        document.body.appendChild(detailScript);
+      }, { once: true });
       document.body.appendChild(finalScript);
     }
   }, { once: true });
