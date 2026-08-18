@@ -1,6 +1,12 @@
 // Final UI polish layer. Presentation/toggle behaviour only; core Matchday data stays in matchday.js.
 (() => {
   function initPolish() {
+    const BRAND_NAME = "Welling United Youth & Development";
+
+    // Update branding on the main Attendance page and Matchday header.
+    const attendanceBrand = document.querySelector(".app-header .eyebrow");
+    if (attendanceBrand) attendanceBrand.textContent = BRAND_NAME;
+
     // Attendance status buttons are true toggles: tapping the selected status clears it.
     const list = document.getElementById("player-list");
     if (list && typeof attendance !== "undefined" && typeof players !== "undefined") {
@@ -29,6 +35,8 @@
     if (header) {
       md.close.textContent = "Back";
       md.close.setAttribute("aria-label", "Back to Attendance");
+      const headerEyebrow = header.querySelector(".eyebrow");
+      if (headerEyebrow) headerEyebrow.textContent = BRAND_NAME;
       const headerLeft = header.firstElementChild;
       if (headerLeft && !header.querySelector(".matchday-header-logo")) {
         const logo = document.createElement("img");
@@ -84,6 +92,11 @@
       return venue === "away" || venue.startsWith("away ") || venue.includes(" away");
     }
 
+    function fixtureLocation(f) {
+      if (!f) return "";
+      return isAwayFixture(f) ? "Away" : "Home";
+    }
+
     function scoreCounts() {
       let ours = 0;
       let theirs = 0;
@@ -94,10 +107,11 @@
       return { ours, theirs };
     }
 
-    function renderHomeAwayScore() {
+    function renderFixtureAndScore() {
       const target = document.getElementById("matchday-team-score");
-      if (!target) return;
       const f = typeof fixture === "function" ? fixture() : null;
+      if (!target || !f) return;
+
       const { ours, theirs } = scoreCounts();
       const away = isAwayFixture(f);
       const opposition = f?.opposition || "Opponent";
@@ -105,25 +119,35 @@
       const rightName = away ? "Welling" : opposition;
       const leftScore = away ? theirs : ours;
       const rightScore = away ? ours : theirs;
-      target.innerHTML = `<div class="matchday-team-name">${leftName}</div><div class="matchday-score-value">${leftScore} - ${rightScore}</div><div class="matchday-team-name">${rightName}</div>`;
+
+      target.innerHTML = `
+        <div class="matchday-score-value">${leftScore} - ${rightScore}</div>
+        <div class="matchday-score-teamline">${leftName} · ${rightName}</div>
+      `;
+
+      const location = fixtureLocation(f);
+      if (md.liveFixture) {
+        const base = `${f.date || ""} · ${opposition} · ${f.competition || ""}`.replace(/(^ · | · $)/g, "");
+        md.liveFixture.textContent = `${base} · ${location}`;
+      }
     }
 
     if (typeof renderRecordedItems === "function") {
       const previousRenderRecordedItems = renderRecordedItems;
       renderRecordedItems = function () {
         previousRenderRecordedItems();
-        renderHomeAwayScore();
+        renderFixtureAndScore();
       };
     }
     if (typeof renderLive === "function") {
       const previousRenderLive = renderLive;
       renderLive = function () {
         previousRenderLive();
-        renderHomeAwayScore();
+        renderFixtureAndScore();
       };
     }
-    md.fixture?.addEventListener("change", () => setTimeout(renderHomeAwayScore, 0));
-    renderHomeAwayScore();
+    md.fixture?.addEventListener("change", () => setTimeout(renderFixtureAndScore, 0));
+    renderFixtureAndScore();
 
     const style = document.createElement("style");
     style.textContent = `
@@ -134,18 +158,15 @@
       .matchday-header #close-matchday { align-self:center; }
       .matchday-scoreboard { padding:16px !important; }
       .matchday-score-grid { display:grid; grid-template-columns:1fr 1fr; margin-top:12px; border-top:1px solid rgba(255,255,255,.24); }
-      .matchday-score-panel { min-width:0; padding:14px 16px 4px; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; }
+      .matchday-score-panel { min-width:0; min-height:285px; padding:14px 16px 8px; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; }
       .matchday-score-panel + .matchday-score-panel { border-left:1px solid rgba(255,255,255,.24); }
-      .matchday-score-panel-label { font-size:.72rem; font-weight:900; text-transform:uppercase; letter-spacing:.06em; opacity:.78; margin-bottom:3px; }
-      .matchday-time-panel .matchday-clock { margin:0 0 2px; font-size:clamp(2.5rem,10vw,4.2rem); }
-      .matchday-time-panel .matchday-clock-state { margin-bottom:10px; }
-      .matchday-time-panel #matchday-pause, .matchday-time-panel #matchday-resume { width:100%; max-width:240px; margin:0; background:#fff3df; border-color:#fdba74; color:#9a4d00; }
-      .matchday-result-panel .matchday-opponent-goal { width:100%; max-width:240px; margin:10px 0 0; }
-      .matchday-team-score { width:100%; display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); gap:8px; align-items:center; margin-top:10px; }
-      .matchday-team-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.8rem; font-weight:900; }
-      .matchday-team-name:first-child { text-align:right; }
-      .matchday-team-name:last-child { text-align:left; }
-      .matchday-score-value { font-size:clamp(2rem,7vw,3.4rem); line-height:1; font-weight:1000; white-space:nowrap; }
+      .matchday-score-panel-label { font-size:.72rem; font-weight:900; text-transform:uppercase; letter-spacing:.06em; opacity:.78; margin-bottom:8px; }
+      .matchday-time-panel .matchday-clock, .matchday-score-value { margin:0; font-size:clamp(3rem,10vw,5rem); line-height:1.05; font-weight:1000; font-variant-numeric:tabular-nums; letter-spacing:-.05em; white-space:nowrap; }
+      .matchday-time-panel .matchday-clock-state, .matchday-score-teamline { margin-top:12px; margin-bottom:14px; min-height:18px; font-size:.78rem; font-weight:900; text-transform:uppercase; letter-spacing:.02em; opacity:.82; text-align:center; }
+      .matchday-time-panel #matchday-pause, .matchday-time-panel #matchday-resume, .matchday-result-panel .matchday-opponent-goal { width:100%; max-width:240px; margin-top:auto !important; min-height:50px; }
+      .matchday-time-panel #matchday-pause, .matchday-time-panel #matchday-resume { background:#fff3df; border-color:#fdba74; color:#9a4d00; }
+      .matchday-result-panel .matchday-opponent-goal { display:block; }
+      .matchday-team-score { width:100%; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; }
       .matchday-live-actions { display:none !important; }
       .matchday-live-section { margin-top:18px !important; padding-top:0 !important; border-top:0 !important; }
       .matchday-polish-divider, .matchday-divider-title { width:100%; margin:0 0 14px !important; padding:11px 14px !important; border-radius:9px; background:#eef0f3; color:#1f2937; font-size:1.08rem; line-height:1.2; text-align:left; box-sizing:border-box; }
@@ -153,12 +174,10 @@
       @media (max-width:620px) {
         .matchday-header-logo { width:58px; height:58px; }
         .matchday-header { gap:10px; }
-        .matchday-score-panel { padding:12px 8px 4px; }
-        .matchday-time-panel .matchday-clock { font-size:clamp(2.25rem,13vw,3.6rem); }
-        .matchday-team-score { grid-template-columns:1fr; gap:2px; }
-        .matchday-team-name:first-child, .matchday-team-name:last-child { text-align:center; font-size:.7rem; }
-        .matchday-score-value { grid-row:2; font-size:clamp(2rem,10vw,3rem); }
-        .matchday-team-name:last-child { grid-row:3; }
+        .matchday-header .eyebrow { font-size:.64rem; }
+        .matchday-score-panel { min-height:240px; padding:12px 8px 8px; }
+        .matchday-time-panel .matchday-clock, .matchday-score-value { font-size:clamp(2.6rem,12vw,4rem); }
+        .matchday-time-panel .matchday-clock-state, .matchday-score-teamline { font-size:.68rem; }
       }
     `;
     document.head.appendChild(style);
