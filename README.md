@@ -79,3 +79,5 @@ The Supabase project uses:
 - `matchday_recovery`
 
 The Matchday recovery table is created by `MATCHDAY-RESILIENCE.sql`.
+
+Deployment refresh: 2026-08-18.
