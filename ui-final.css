@@ -1,0 +1,115 @@
+/* Final layout overrides loaded after the JS polish layer. */
+
+/* Match Events: six real columns in Goal mode so Minute/tick cannot overhang. */
+.matchday-unified-event-card {
+  overflow: hidden;
+}
+.matchday-unified-grid {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  grid-template-columns:
+    minmax(0, 1.15fr)
+    minmax(0, 1.15fr)
+    minmax(0, 1.15fr)
+    minmax(0, 1.15fr)
+    minmax(72px, .55fr)
+    56px !important;
+  gap: 8px !important;
+  align-items: end;
+}
+.matchday-unified-grid > * {
+  min-width: 0;
+  max-width: 100%;
+}
+.matchday-unified-grid .matchday-select,
+.matchday-unified-grid .matchday-input {
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.matchday-unified-grid .matchday-tick-button {
+  width: 56px;
+  min-width: 56px;
+  max-width: 56px;
+  justify-self: end;
+}
+
+/* Substitution row gets the same containment rules. */
+.matchday-sub-grid {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  grid-template-columns: minmax(0,1fr) minmax(0,1fr) minmax(72px,.55fr) 56px !important;
+  gap: 8px !important;
+  align-items: end;
+}
+.matchday-sub-grid > * {
+  min-width: 0;
+}
+.matchday-sub-grid .matchday-tick-button {
+  width: 56px;
+  min-width: 56px;
+  justify-self: end;
+}
+
+/* Keep recorded rows safely inside the card. */
+.matchday-event-row,
+.matchday-sub-row {
+  min-width: 0;
+  overflow: hidden;
+}
+.matchday-event-row > span,
+.matchday-sub-row > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.matchday-spanner {
+  flex: 0 0 auto;
+}
+
+/* Finished Matchday should read as a completion screen rather than another input form. */
+#matchday-finished .matchday-scoreboard {
+  margin-bottom: 16px;
+}
+#matchday-save-status {
+  padding: 10px 12px;
+  border-radius: 9px;
+  background: #f3f4f6;
+  text-align: center;
+}
+
+@media (max-width: 820px) {
+  .matchday-unified-grid {
+    grid-template-columns: minmax(0,1fr) minmax(0,1fr) !important;
+  }
+  .matchday-unified-grid > label,
+  .matchday-unified-grid .matchday-tick-button {
+    grid-column: auto;
+  }
+  .matchday-unified-grid .matchday-tick-button {
+    grid-column: 2;
+    justify-self: end;
+  }
+
+  .matchday-sub-grid {
+    grid-template-columns: minmax(0,1fr) minmax(0,1fr) !important;
+  }
+  .matchday-sub-grid .matchday-tick-button {
+    grid-column: 2;
+    justify-self: end;
+  }
+}
+
+@media (max-width: 520px) {
+  .matchday-unified-grid,
+  .matchday-sub-grid {
+    grid-template-columns: minmax(0,1fr) !important;
+  }
+  .matchday-unified-grid .matchday-tick-button,
+  .matchday-sub-grid .matchday-tick-button {
+    grid-column: 1;
+    justify-self: end;
+  }
+}
