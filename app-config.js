@@ -46,5 +46,13 @@ window.addEventListener("DOMContentLoaded", () => {
   const script = document.createElement("script");
   script.src = "ui-polish.js";
   script.dataset.wellingUiPolish = "true";
+  script.addEventListener("load", () => {
+    if (document.querySelector('link[data-welling-ui-final]')) return;
+    const css = document.createElement("link");
+    css.rel = "stylesheet";
+    css.href = "ui-final.css";
+    css.dataset.wellingUiFinal = "true";
+    document.head.appendChild(css);
+  }, { once: true });
   document.body.appendChild(script);
 }, { once: true });
