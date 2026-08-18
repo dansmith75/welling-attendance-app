@@ -39,6 +39,14 @@ window.addEventListener("load", () => {
   document.getElementById("export-excel-csv")?.remove();
 });
 
+function loadMatchdayExportNormalizer() {
+  if (document.querySelector('script[data-welling-matchday-export-normalize]')) return;
+  const normalizer = document.createElement("script");
+  normalizer.src = "matchday-export-normalize.js";
+  normalizer.dataset.wellingMatchdayExportNormalize = "true";
+  document.body.appendChild(normalizer);
+}
+
 // Load the presentation layer after the core Attendance and Matchday scripts.
 window.addEventListener("DOMContentLoaded", () => {
   if (document.querySelector('script[data-welling-ui-polish]')) return;
@@ -59,13 +67,19 @@ window.addEventListener("DOMContentLoaded", () => {
       finalScript.src = "matchday-final.js";
       finalScript.dataset.wellingMatchdayFinal = "true";
       finalScript.addEventListener("load", () => {
-        if (document.querySelector('script[data-welling-matchday-details]')) return;
+        if (document.querySelector('script[data-welling-matchday-details]')) {
+          loadMatchdayExportNormalizer();
+          return;
+        }
         const detailScript = document.createElement("script");
         detailScript.src = "matchday-details.js";
         detailScript.dataset.wellingMatchdayDetails = "true";
+        detailScript.addEventListener("load", loadMatchdayExportNormalizer, { once: true });
         document.body.appendChild(detailScript);
       }, { once: true });
       document.body.appendChild(finalScript);
+    } else {
+      loadMatchdayExportNormalizer();
     }
   }, { once: true });
   document.body.appendChild(script);
