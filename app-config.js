@@ -47,8 +47,18 @@ function loadMatchdayExportNormalizer() {
   document.body.appendChild(normalizer);
 }
 
+function loadMatchdaySaveGuard() {
+  if (document.querySelector('script[data-welling-matchday-save-guard]')) return;
+  const guard = document.createElement("script");
+  guard.src = "matchday-save-guard.js";
+  guard.dataset.wellingMatchdaySaveGuard = "true";
+  document.body.appendChild(guard);
+}
+
 // Load the presentation layer after the core Attendance and Matchday scripts.
 window.addEventListener("DOMContentLoaded", () => {
+  loadMatchdaySaveGuard();
+
   if (document.querySelector('script[data-welling-ui-polish]')) return;
   const script = document.createElement("script");
   script.src = "ui-polish.js";
