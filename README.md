@@ -1,22 +1,22 @@
-# Welling United Red Attendance App
+# Welling Match
 
 Mobile-first Attendance and Matchday capture for Welling United Red OBDSFL.
 
 ## Current data flow
 
-The app writes Attendance and completed Matchday data to Supabase so any authorised manager can run the session from their own phone.
+Welling Match writes Attendance and completed Matchday data to Supabase so any authorised manager can run the session from their own phone.
 
 The master Excel workbook remains the football-data source of truth.
 
 Normal workflow:
 
-1. Manager records Attendance and/or Matchday in the app.
-2. The app submits the data centrally to Supabase.
-3. `UPDATE-WELLING` runs `sync_supabase_to_excel.py` and imports only new Supabase submissions into Excel.
+1. Manager records Attendance and/or Matchday in Welling Match.
+2. Welling Match submits the data centrally to Supabase.
+3. `UPDATE-WELLING` reconciles Supabase submissions into Excel.
 4. Excel is saved.
 5. The Dashboard JSON files are regenerated from Excel.
 6. The changed JSON is published to GitHub.
-7. Dashboard, Attendance and Matchday continue to use the shared squad and fixture feeds.
+7. Dashboard and Welling Match continue to use the shared squad and fixture feeds.
 
 There is no manual Excel CSV export/import step in the normal workflow.
 
@@ -28,7 +28,7 @@ There is no manual Excel CSV export/import step in the normal workflow.
 - Unavailable, Injured and Rotated players move to the bottom of the list.
 - Active players and `displayName` come from the shared Dashboard `players.json` feed.
 - Submitted Attendance is stored centrally in Supabase.
-- Recent submitted sessions can be reviewed from the app.
+- Recent submitted sessions can be reviewed from Welling Match.
 
 ## Matchday v3
 
@@ -52,7 +52,7 @@ There is no manual Excel CSV export/import step in the normal workflow.
 
 `UPDATE-WELLING` pulls central submissions back into Excel automatically.
 
-Attendance records are appended only when their generated record key has not already been imported.
+`AttendanceRecords` is mirrored from Supabase, so deleted or corrected attendance sessions are reflected in Excel on the next update.
 
 Completed Matchdays are imported once by Supabase session ID. The Matchday audit table retains starters, substitutions, minutes, goals, assists, cards and notes while the existing Goals, Assists and Events sheets are updated where applicable.
 
@@ -60,7 +60,7 @@ This means the phone used to run the session is not part of the long-term data c
 
 ## Shared data
 
-`app-config.js` points Attendance / Matchday at the Dashboard-published:
+`app-config.js` points Welling Match at the Dashboard-published:
 
 - `data/players.json`
 - `data/matches.json`
@@ -80,4 +80,4 @@ The Supabase project uses:
 
 The Matchday recovery table is created by `MATCHDAY-RESILIENCE.sql`.
 
-Deployment refresh: 2026-08-18.
+The Supabase `source` value `welling_attendance_app` is intentionally retained as a stable internal data identifier; it is not user-facing branding.
