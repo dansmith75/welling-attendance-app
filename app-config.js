@@ -1,10 +1,10 @@
-// Welling Attendance / Matchday shared data configuration.
-// Excel remains the source of truth. The Dashboard publishes the JSON and
-// Attendance / Matchday consume those same published files.
+// Welling Match shared data configuration.
+// Excel remains the source of truth. Welling Dashboard publishes the JSON and
+// Welling Match consumes those same published files.
 
 window.WELLING_APP_CONFIG = {
-  dashboardPlayersUrl: "https://dansmith75.github.io/Welling-Utd-Red-OBDSFL/data/players.json",
-  dashboardMatchesUrl: "https://dansmith75.github.io/Welling-Utd-Red-OBDSFL/data/matches.json"
+  dashboardPlayersUrl: "https://dansmith75.github.io/welling-dashboard/data/players.json",
+  dashboardMatchesUrl: "https://dansmith75.github.io/welling-dashboard/data/matches.json"
 };
 
 (() => {
